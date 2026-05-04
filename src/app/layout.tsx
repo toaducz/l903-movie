@@ -27,6 +27,11 @@ export default function RootLayout({
 }>) {
   return (
     <html lang='vi'>
+      <script
+        defer
+        src='https://umami.l903.site/script.js'
+        data-website-id='c09bed4b-cda4-4fd9-8f6a-b739d33502da'
+      ></script>
       <body className={`${beVietnamPro.variable} antialiased`}>
         <QueryProvider>
           <Suspense>
