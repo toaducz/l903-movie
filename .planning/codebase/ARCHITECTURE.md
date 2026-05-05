@@ -1,6 +1,6 @@
 # Architecture
 
-**Analysis Date:** 2025-03-08
+**Analysis Date:** 2025-05-05
 
 ## Pattern Overview
 
@@ -29,9 +29,9 @@
 - Used by: Pages và components qua `useQuery(module.queryOptions(...))`
 
 **BFF (Route Handlers):**
-- Purpose: Proxy CORS, auth (login/logout/me), favorites CRUD
-- Location: `src/app/api/` — `proxy/route.ts`, `auth/login`, `auth/logout`, `auth/me`, `favorite/route.ts`, `favorite/check/route.ts`
-- Contains: GET/POST/DELETE handlers, Supabase client, cookie read/set, `getUserId(req)`
+- Purpose: Proxy CORS, auth (login/logout/me), favorites CRUD, notifications
+- Location: `src/app/api/` — `proxy/route.ts`, `auth/login`, `auth/logout`, `auth/me`, `favorite/route.ts`, `favorite/check/route.ts`, `notifications/route.ts`
+- Contains: GET/POST/DELETE/PUT handlers, Supabase client, cookie read/set, `getUserId(req)`
 - Depends on: `src/lib/supabaseClient.ts`, `src/lib/auth-helper.ts`
 - Used by: Client fetch (form action, `useAuth`, favorite buttons, proxy từ `request()`)
 
@@ -64,6 +64,12 @@
 - Server state: TanStack Query (queryKey từ api modules)
 - Auth: React Context (`AuthProvider`, `useAuth()`)
 - Watch history: localStorage (helper trong `src/utils/local-storage.ts`)
+
+**Notifications (Fan-out on Write):**
+1. Cronjob (Cloudflare Worker) chạy mỗi giờ: fetch API KKPhim -> bulk upsert vào `movie_tracking` (Supabase).
+2. Worker gọi RPC `notify_movie_updates` trên Supabase truyền danh sách phim mới.
+3. Supabase RPC dùng `UNION` gộp `favorite` và `watch_history` để insert hàng loạt vào `user_notifications`.
+4. Client component `NotificationBell` dùng `useQuery` gọi `GET /api/notifications` để hiển thị và `PUT /api/notifications` để mark-as-read.
 
 ## Key Abstractions
 
@@ -119,4 +125,4 @@
 
 ---
 
-*Architecture analysis: 2025-03-08*
+*Architecture analysis: 2025-05-05*

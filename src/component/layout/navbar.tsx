@@ -11,6 +11,7 @@ import { getCountrySlug } from '@/api/kkphim/filter/get-country-slug'
 import userIcon from '@/assets/user-icons.png'
 import { useAuth } from '@/app/auth-provider'
 import { getSearchByName } from '@/api/kkphim/search/get-search'
+import NotificationBell from '@/component/layout/notification-bell'
 
 type DropdownItem = { _id: string; slug: string; name: string }
 
@@ -23,7 +24,7 @@ export default function Navbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [isVisible, setIsVisible] = useState(true)
   const [lastScrollY, setLastScrollY] = useState(0)
-  const [openMenu, setOpenMenu] = useState<'category' | 'country' | 'year' | null>(null)
+  const [openMenu, setOpenMenu] = useState<'category' | 'country' | 'year' | 'notification' | null>(null)
   const MAX_SEARCH_LENGTH = 100
   const suggestionRef = useRef<HTMLDivElement>(null)
   const { data: categoryData, isLoading: categoryLoading } = useQuery(getCategorySlug())
@@ -127,9 +128,8 @@ export default function Navbar() {
 
   return (
     <nav
-      className={`w-full inset-x-0 fixed top-0 z-[9999] transition-transform duration-300 border-b ${
-        isVisible ? 'translate-y-0' : '-translate-y-full'
-      }`}
+      className={`w-full inset-x-0 fixed top-0 z-[9999] transition-transform duration-300 border-b ${isVisible ? 'translate-y-0' : '-translate-y-full'
+        }`}
       style={{
         backdropFilter: 'blur(20px)',
         background: 'rgba(13,10,20,.75)',
@@ -175,9 +175,8 @@ export default function Navbar() {
                             key={item.slug}
                             href={item.slug === 'loading' ? '#' : href}
                             onClick={() => setOpenMenu(null)}
-                            className={`block w-full text-left px-3.5 py-2 text-sm text-white/70 hover:text-white hover:bg-white/5 transition-colors ${
-                              item.slug === 'loading' ? 'opacity-50 pointer-events-none' : ''
-                            }`}
+                            className={`block w-full text-left px-3.5 py-2 text-sm text-white/70 hover:text-white hover:bg-white/5 transition-colors ${item.slug === 'loading' ? 'opacity-50 pointer-events-none' : ''
+                              }`}
                           >
                             {item.name}
                           </Link>
@@ -208,7 +207,7 @@ export default function Navbar() {
               style={{ background: 'rgba(255,255,255,.05)', borderColor: 'var(--c-line)' }}
             >
               <svg width='13' height='13' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' className='text-white/40 shrink-0'>
-                <circle cx='11' cy='11' r='7'/><path d='M21 21l-4.3-4.3' strokeLinecap='round'/>
+                <circle cx='11' cy='11' r='7' /><path d='M21 21l-4.3-4.3' strokeLinecap='round' />
               </svg>
               <input
                 type='text'
@@ -270,15 +269,21 @@ export default function Navbar() {
           )}
         </button>
 
-        {/* User avatar / login */}
-        <Link
-          key={'user-icon'}
-          href={user?.id !== undefined || null ? '/profile' : '/login'}
-          className='rounded-full p-1.5 transition-all duration-200 hover:opacity-80'
-          style={{ background: 'rgba(255,255,255,.08)' }}
-        >
-          <Image src={userIcon} alt='user' width={32} height={32} className='rounded-full' />
-        </Link>
+        {/* Notification Bell + User avatar */}
+        <div className='flex items-center gap-2'>
+          <NotificationBell
+          // isOpen={openMenu === 'notification'}
+          // onToggle={() => setOpenMenu(openMenu === 'notification' ? null : 'notification')}
+          />
+          <Link
+            key={'user-icon'}
+            href={user?.id !== undefined || null ? '/profile' : '/login'}
+            className='rounded-full p-1.5 transition-all duration-200 hover:opacity-80'
+            style={{ background: 'rgba(255,255,255,.08)' }}
+          >
+            <Image src={userIcon} alt='user' width={32} height={32} className='rounded-full' />
+          </Link>
+        </div>
       </div>
 
       {/* Mobile Menu */}

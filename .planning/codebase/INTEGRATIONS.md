@@ -1,6 +1,6 @@
 # External Integrations
 
-**Analysis Date:** 2025-03-08
+**Analysis Date:** 2025-05-05
 
 ## APIs & External Services
 
@@ -17,7 +17,8 @@
 - **Supabase** — auth + PostgreSQL
   - Client: `src/lib/supabaseClient.ts` (singleton, `persistSession: false`)
   - Auth: signInWithPassword, cookies `sb-access-token` (7d), `sb-refresh-token` (30d)
-  - Bảng: `favorite` (id, user_id, slug, name, image, created_at)
+  - Bảng: `favorite`, `movie_tracking`, `user_notifications`
+  - RPC: `notify_movie_updates` (fan-out notification khi có phim mới)
   - Không dùng ORM — `.from('favorite').select()`, `.insert()`, `.delete()`
 
 ## Data Storage
@@ -47,7 +48,9 @@
 
 ## CI/CD & Deployment
 
-**Hosting:** Vercel (theo CLAUDE.md)
+**Hosting:** Vercel (Frontend + BFF)
+
+**Background Jobs:** Cloudflare Workers (Cronjob `0 * * * *` check phim mới)
 
 **CI Pipeline:** Not detected trong repo (no GitHub Actions / workflow files)
 
@@ -67,4 +70,4 @@
 
 ---
 
-*Integration audit: 2025-03-08*
+*Integration audit: 2025-05-05*

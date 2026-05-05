@@ -1,6 +1,6 @@
 # Codebase Structure
 
-**Analysis Date:** 2025-03-08
+**Analysis Date:** 2025-05-05
 
 ## Directory Layout
 
@@ -9,7 +9,7 @@ L903-Movie/
 ├── src/
 │   ├── api/              # TanStack Query queryOptions + types (KKPhim, NguonC)
 │   ├── app/              # App Router: layouts, pages, API routes
-│   │   ├── api/          # Route Handlers: proxy, auth, favorite
+│   │   ├── api/          # Route Handlers: proxy, auth, favorite, notifications
 │   │   ├── auth-provider.tsx
 │   │   ├── layout.tsx
 │   │   ├── page.tsx
@@ -40,13 +40,13 @@ L903-Movie/
 
 **`src/app/`:**
 - Purpose: Routes (pages + layouts) và BFF (api/)
-- Contains: `layout.tsx`, `page.tsx`, `auth-provider.tsx`, `provider.tsx`, thư mục route (detail-movie, search, list-movie, profile, nguonc, …), `api/proxy`, `api/auth/*`, `api/favorite/*`
-- Key files: `src/app/layout.tsx`, `src/app/page.tsx`, `src/app/api/proxy/route.ts`, `src/app/api/auth/login/route.ts`, `src/app/api/favorite/route.ts`
+- Contains: `layout.tsx`, `page.tsx`, `auth-provider.tsx`, `provider.tsx`, thư mục route (detail-movie, search, list-movie, profile, nguonc, …), `api/proxy`, `api/auth/*`, `api/favorite/*`, `api/notifications/*`
+- Key files: `src/app/layout.tsx`, `src/app/page.tsx`, `src/app/api/proxy/route.ts`, `src/app/api/auth/login/route.ts`, `src/app/api/favorite/route.ts`, `src/app/api/notifications/route.ts`
 
 **`src/component/`:**
 - Purpose: Component UI tái sử dụng
-- Contains: navbar, footer, player (custom-player), episode-list, item (movie-item, movie-rank-item, profile-movie-items), status (loading, error, warning), pagination, filter, favorite-button, NProgressInit
-- Key files: `src/component/player/custom-player.tsx`, `src/component/item/movie-item.tsx`, `src/component/status/loading.tsx`
+- Contains: navbar, footer, player (custom-player), episode-list, item (movie-item, movie-rank-item, profile-movie-items), status (loading, error, warning), pagination, filter, favorite-button, notification-bell, NProgressInit
+- Key files: `src/component/player/custom-player.tsx`, `src/component/item/movie-item.tsx`, `src/component/layout/notification-bell.tsx`
 
 **`src/lib/`:**
 - Purpose: Singleton và helper server-side
@@ -135,4 +135,4 @@ L903-Movie/
 
 ---
 
-*Structure analysis: 2025-03-08*
+*Structure analysis: 2025-05-05*
