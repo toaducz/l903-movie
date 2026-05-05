@@ -42,7 +42,6 @@ export default function ContinueWatchingSection() {
           const percent = Math.min(Math.round((d.progress / d.duration) * 100), 99)
           return { ...d, episodeName: d.episode_name, percent }
         })
-        .filter((d: WatchingItem) => d.percent < 95)
       const merged = dbItems.length > 0 ? dbItems : getWatchingInProgress()
       return merged.slice(0, 20)
     }

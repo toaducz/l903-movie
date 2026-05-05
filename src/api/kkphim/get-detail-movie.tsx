@@ -27,7 +27,7 @@ export type DetailMovie = {
     origin_name: string
     content: string
     type: string
-    status: string
+    status: 'ongoing' | 'completed' | string
     poster_url: string
     thumb_url: string
     is_copyright: boolean

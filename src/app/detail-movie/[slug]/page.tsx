@@ -216,9 +216,21 @@ export default function WatchPage() {
           >
             <div className='absolute inset-0 bg-gradient-to-t from-[var(--c-bg)] via-[var(--c-bg)]/60 to-transparent' />
             <div className='absolute bottom-0 left-0 w-full p-6 sm:p-10'>
-              <span className='c-sticker mb-3 inline-block'>
-                ★ {movie.quality} · {movie.lang}
-              </span>
+              <div className='flex flex-wrap items-center gap-2 mb-3'>
+                <span className='c-sticker m-0 inline-block'>
+                  ★ {movie.quality} · {movie.lang}
+                </span>
+                {movie.status === 'completed' && (
+                  <span className='c-sticker m-0 inline-block !bg-[#00ff88] !text-black !border-[#00ff88] shadow-[0_0_10px_rgba(0,255,136,0.3)]'>
+                    Hoàn Tất
+                  </span>
+                )}
+                {movie.status === 'ongoing' && (
+                  <span className='c-sticker m-0 inline-block !bg-[var(--c-cyan)] !text-black !border-[var(--c-cyan)] shadow-[0_0_10px_var(--c-cyan)]'>
+                    Đang chiếu
+                  </span>
+                )}
+              </div>
               <h1 className='text-3xl sm:text-5xl font-black tracking-tight text-white mb-2 drop-shadow-lg'>
                 {movie.name}
               </h1>
@@ -394,10 +406,9 @@ export default function WatchPage() {
                 <button
                   onClick={() => setUseBackupPlayer(prev => !prev)}
                   className={`px-4 py-1.5 text-xs font-bold rounded-full transition cursor-pointer border
-                    ${
-                      useBackupPlayer
-                        ? 'bg-[var(--c-yel)] text-[var(--c-bg)] border-[var(--c-yel)]'
-                        : 'bg-transparent text-[var(--c-cyan)] border-[var(--c-cyan)] hover:bg-[var(--c-cyan)]/10'
+                    ${useBackupPlayer
+                      ? 'bg-[var(--c-yel)] text-[var(--c-bg)] border-[var(--c-yel)]'
+                      : 'bg-transparent text-[var(--c-cyan)] border-[var(--c-cyan)] hover:bg-[var(--c-cyan)]/10'
                     }`}
                 >
                   {useBackupPlayer ? '⚡ DỰ PHÒNG - ĐỔI VỀ SERVER CHÍNH' : '⇄ DÙNG LINK DỰ PHÒNG (CÓ QUẢNG CÁO)'}
@@ -414,19 +425,19 @@ export default function WatchPage() {
                     onProgress={
                       user
                         ? (time, duration) => {
-                            fetch('/api/history', {
-                              method: 'POST',
-                              headers: { 'Content-Type': 'application/json' },
-                              body: JSON.stringify({
-                                slug: movie.slug,
-                                name: movie.name,
-                                image: movie.poster_url,
-                                episode_name: episodeToPlay.name,
-                                progress: time,
-                                duration
-                              })
+                          fetch('/api/history', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                              slug: movie.slug,
+                              name: movie.name,
+                              image: movie.poster_url,
+                              episode_name: episodeToPlay.name,
+                              progress: time,
+                              duration
                             })
-                          }
+                          })
+                        }
                         : undefined
                     }
                     options={{
