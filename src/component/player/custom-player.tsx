@@ -218,7 +218,15 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
             // Phụ đề trễ hơn 0.5s
             subOffsetRef.current = parseFloat((subOffsetRef.current + 0.5).toFixed(1))
             setSubOffset(subOffsetRef.current)
+          } else {
+            return // Phím không được handle → bỏ qua
           }
+
+          // Báo Video.js user đang active → hiện control bar khi dùng bàn phím
+          player.userActive(true)
+          // Ngăn Video.js double-handle cùng phím trên player element
+          // (Space sẽ toggle 2 lần = net không pause; Arrow sẽ tua 2 lần = ±15s)
+          e.stopPropagation()
         }
         window.addEventListener('keydown', handleKeyDown)
 
@@ -256,7 +264,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
                 orientation.unlock()
               }
             } catch (error) {
-              console.warn('Không thể mở  khóa màn hình:', error)
+              console.warn('Không thể mở khóa màn hình:', error)
             }
           }
         }
@@ -266,35 +274,45 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
         let mutedByAd = false
         let adRafId: number | null = null
         let isSeekingAd = false
+        let adRegionsReady = false // true khi VHS đã sẵn sàng và segment list đầy đủ
 
         const calculateAdRegions = () => {
           const tech = player.tech() as unknown as VHSTech
           const vhs = tech?.vhs
-
           if (!vhs) return
+
           const media = vhs.playlists.media()
-          if (!media) return
+          if (!media?.segments?.length) return
+
+          // ── Validate segment list đầy đủ ────────────────────────────────────
+          // VHS có thể trả về sliding window (chỉ một phần segments), khiến
+          // currentTimeAcc của ad segment bị tính sai (= 0 thay vì vị trí thật).
+          // So sánh tổng duration của segments với player.duration():
+          // nếu chênh lệch > 15% → list chưa đầy đủ → bỏ qua lần này.
+          const playerDuration = player.duration() ?? 0
+          if (playerDuration > 0) {
+            const segTotal = media.segments.reduce((s, seg) => s + (seg.duration || 0), 0)
+            if (segTotal < playerDuration * 0.85) return // partial list → skip
+          }
+
+          adRegionsReady = true // VHS ready và list hợp lệ
 
           let currentTimeAcc = 0
           const newAdRegions: Array<{ start: number; end: number }> = []
 
-          // \d{4,}\.ts = pattern mới kiểu 000010.ts (tên toàn số từ 4 chữ số trở lên)
+          // \d{4,}\.ts = pattern kiểu 000010.ts (tên toàn số từ 4 chữ số trở lên)
           const adRegex = /^(segment_\d+|ads?_.*|promo_.*|\d{4,})\.ts$/i
 
           media.segments.forEach(segment => {
             const url = segment.resolvedUri || segment.uri || ''
             const fileName = url.split('/').pop()?.split('?')[0]?.split('#')[0] || ''
-
             if (adRegex.test(fileName)) {
-              newAdRegions.push({
-                start: currentTimeAcc,
-                end: currentTimeAcc + segment.duration
-              })
+              newAdRegions.push({ start: currentTimeAcc, end: currentTimeAcc + segment.duration })
             }
             currentTimeAcc += segment.duration
           })
 
-          // Merge các region liền nhau thành 1 để tránh seek nhiều lần
+          // Merge các region liền nhau
           const merged: Array<{ start: number; end: number; skipped?: boolean }> = []
           for (const region of newAdRegions) {
             const last = merged[merged.length - 1]
@@ -304,6 +322,14 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
               merged.push({ ...region })
             }
           }
+
+          // Giữ lại trạng thái skipped từ lần tính trước
+          // (tránh recalc làm mất flag → seek lại vùng đã skip)
+          for (const newR of merged) {
+            const old = adRegions.find(r => Math.abs(r.start - newR.start) < 2 && Math.abs(r.end - newR.end) < 2)
+            if (old?.skipped) newR.skipped = true
+          }
+
           adRegions = merged
         }
 
@@ -311,15 +337,16 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
         player.on('mediachange', calculateAdRegions)
         player.on('canplay', calculateAdRegions)
 
-        // VHS khởi tạo bất đồng bộ — tại thời điểm loadedmetadata, tech?.vhs
-        // hoặc vhs.playlists.media() vẫn có thể là null nếu xem từ đầu.
-        // Retry sau 500ms và 1500ms để đảm bảo luôn có adRegions.
-        setTimeout(calculateAdRegions, 500)
-        setTimeout(calculateAdRegions, 1500)
-
         const pollAds = () => {
           if (player.isDisposed()) return
           adRafId = requestAnimationFrame(pollAds)
+
+          // Retry mỗi frame cho đến khi VHS sẵn sàng và segment list hợp lệ
+          // (thay thế setTimeout retry để tránh fire mid-playback với timing sai)
+          if (!adRegionsReady) {
+            calculateAdRegions()
+            return
+          }
 
           if (adRegions.length === 0) return
           const currentTime = player.currentTime() ?? 0
