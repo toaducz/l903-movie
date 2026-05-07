@@ -37,7 +37,7 @@ export default function Navbar() {
 
   const { data: suggestionData } = useQuery({
     ...getSearchByName({ keyword: debouncedSearch, page: 1, limit: 6 }),
-    enabled: debouncedSearch.length >= 2,
+    enabled: debouncedSearch.length >= 2
   })
   const suggestions = suggestionData?.data?.items?.slice(0, 6) ?? []
 
@@ -124,12 +124,13 @@ export default function Navbar() {
     }
   ]
 
-  if (pathname === '/login') return null
+  if (pathname === '/login' || pathname === '/home') return null
 
   return (
     <nav
-      className={`w-full inset-x-0 fixed top-0 z-[9999] transition-transform duration-300 border-b ${isVisible ? 'translate-y-0' : '-translate-y-full'
-        }`}
+      className={`w-full inset-x-0 fixed top-0 z-[9999] transition-transform duration-300 border-b ${
+        isVisible ? 'translate-y-0' : '-translate-y-full'
+      }`}
       style={{
         backdropFilter: 'blur(20px)',
         background: 'rgba(13,10,20,.75)',
@@ -175,8 +176,9 @@ export default function Navbar() {
                             key={item.slug}
                             href={item.slug === 'loading' ? '#' : href}
                             onClick={() => setOpenMenu(null)}
-                            className={`block w-full text-left px-3.5 py-2 text-sm text-white/70 hover:text-white hover:bg-white/5 transition-colors ${item.slug === 'loading' ? 'opacity-50 pointer-events-none' : ''
-                              }`}
+                            className={`block w-full text-left px-3.5 py-2 text-sm text-white/70 hover:text-white hover:bg-white/5 transition-colors ${
+                              item.slug === 'loading' ? 'opacity-50 pointer-events-none' : ''
+                            }`}
                           >
                             {item.name}
                           </Link>
@@ -189,11 +191,7 @@ export default function Navbar() {
             }
 
             return (
-              <Link
-                key={i}
-                href={link.href}
-                className='text-white/60 hover:text-white transition-colors duration-150'
-              >
+              <Link key={i} href={link.href} className='text-white/60 hover:text-white transition-colors duration-150'>
                 {link.label}
               </Link>
             )
@@ -203,11 +201,21 @@ export default function Navbar() {
         {/* Search — Desktop */}
         <div ref={suggestionRef} className='hidden sm:flex items-center gap-2 relative'>
           <form onSubmit={handleSearch} className='flex items-center gap-2'>
-            <div className='flex items-center gap-2 rounded-xl px-3 py-2 min-w-[220px] cursor-text text-sm border'
+            <div
+              className='flex items-center gap-2 rounded-xl px-3 py-2 min-w-[220px] cursor-text text-sm border'
               style={{ background: 'rgba(255,255,255,.05)', borderColor: 'var(--c-line)' }}
             >
-              <svg width='13' height='13' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' className='text-white/40 shrink-0'>
-                <circle cx='11' cy='11' r='7' /><path d='M21 21l-4.3-4.3' strokeLinecap='round' />
+              <svg
+                width='13'
+                height='13'
+                viewBox='0 0 24 24'
+                fill='none'
+                stroke='currentColor'
+                strokeWidth='2'
+                className='text-white/40 shrink-0'
+              >
+                <circle cx='11' cy='11' r='7' />
+                <path d='M21 21l-4.3-4.3' strokeLinecap='round' />
               </svg>
               <input
                 type='text'
@@ -218,13 +226,11 @@ export default function Navbar() {
                 onFocus={() => setShowSuggestions(true)}
                 autoComplete='off'
               />
-              <span className='font-mono text-[10px] text-white/25 border border-white/15 rounded px-1.5 py-0.5 shrink-0'>⌘K</span>
+              <span className='font-mono text-[10px] text-white/25 border border-white/15 rounded px-1.5 py-0.5 shrink-0'>
+                ⌘K
+              </span>
             </div>
-            <button
-              type='submit'
-              className='sr-only'
-              disabled={!search.trim()}
-            />
+            <button type='submit' className='sr-only' disabled={!search.trim()} />
           </form>
           {showSuggestions && suggestions.length > 0 && (
             <div
@@ -242,14 +248,20 @@ export default function Navbar() {
                   }}
                 >
                   <img
-                    src={`https://wsrv.nl/?url=${encodeURIComponent(movie.thumb_url?.startsWith('http') ? movie.thumb_url : `https://phimimg.com/${movie.thumb_url?.replace(/^\/+/, '')}`)}&w=80&h=112&fit=cover`}
+                    src={`https://wsrv.nl/?url=${encodeURIComponent(
+                      movie.thumb_url?.startsWith('http')
+                        ? movie.thumb_url
+                        : `https://phimimg.com/${movie.thumb_url?.replace(/^\/+/, '')}`
+                    )}&w=80&h=112&fit=cover`}
                     alt={movie.name}
                     className='w-9 h-12 object-cover rounded-lg flex-shrink-0 border border-white/10'
                   />
                   <div className='min-w-0'>
                     <p className='text-white text-[13px] font-semibold truncate'>{movie.name}</p>
                     <p className='text-white/40 text-xs truncate'>{movie.origin_name}</p>
-                    <p className='text-white/30 text-xs font-mono'>{movie.year} · {movie.episode_current}</p>
+                    <p className='text-white/30 text-xs font-mono'>
+                      {movie.year} · {movie.episode_current}
+                    </p>
                   </div>
                 </button>
               ))}
@@ -301,7 +313,7 @@ export default function Navbar() {
                 className='flex-1 px-4 py-2.5 rounded-xl text-white text-sm focus:outline-none border'
                 style={{
                   background: 'rgba(255,255,255,.06)',
-                  borderColor: 'var(--c-line)',
+                  borderColor: 'var(--c-line)'
                 }}
                 value={search}
                 onChange={e => setSearch(e.target.value)}
@@ -334,14 +346,20 @@ export default function Navbar() {
                     }}
                   >
                     <img
-                      src={`https://wsrv.nl/?url=${encodeURIComponent(movie.thumb_url?.startsWith('http') ? movie.thumb_url : `https://phimimg.com/${movie.thumb_url?.replace(/^\/+/, '')}`)}&w=80&h=112&fit=cover`}
+                      src={`https://wsrv.nl/?url=${encodeURIComponent(
+                        movie.thumb_url?.startsWith('http')
+                          ? movie.thumb_url
+                          : `https://phimimg.com/${movie.thumb_url?.replace(/^\/+/, '')}`
+                      )}&w=80&h=112&fit=cover`}
                       alt={movie.name}
                       className='w-9 h-12 object-cover rounded-lg flex-shrink-0'
                     />
                     <div className='min-w-0'>
                       <p className='text-white text-[13px] font-semibold truncate'>{movie.name}</p>
                       <p className='text-white/40 text-xs truncate'>{movie.origin_name}</p>
-                      <p className='text-white/30 text-xs font-mono'>{movie.year} · {movie.episode_current}</p>
+                      <p className='text-white/30 text-xs font-mono'>
+                        {movie.year} · {movie.episode_current}
+                      </p>
                     </div>
                   </button>
                 ))}

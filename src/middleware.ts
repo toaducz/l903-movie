@@ -16,6 +16,7 @@ export async function middleware(req: NextRequest) {
   const token = req.cookies.get('sb-access-token')?.value
   const refreshToken = req.cookies.get('sb-refresh-token')?.value
   const isLoginPage = req.nextUrl.pathname === '/login'
+  const isHomePage = req.nextUrl.pathname === '/home'
 
   let isAuthenticated = false
   let newSession = null
@@ -40,8 +41,8 @@ export async function middleware(req: NextRequest) {
   let res = NextResponse.next()
 
   // Trường hợp 1: Chưa đăng nhập hợp lệ (fake token hoặc không có) mà cố vào các trang nội dung
-  if (!isAuthenticated && !isLoginPage) {
-    res = NextResponse.redirect(new URL('/login', req.url))
+  if (!isAuthenticated && !isLoginPage && !isHomePage) {
+    res = NextResponse.redirect(new URL('/home', req.url))
   }
   // Trường hợp 2: Đã đăng nhập mà cố vào lại trang login
   else if (isAuthenticated && isLoginPage) {
