@@ -16,7 +16,7 @@ const beVietnamPro = Be_Vietnam_Pro({
 })
 
 export const metadata: Metadata = {
-  title: 'L903 Movie',
+  title: 'L903',
   description: ''
 }
 

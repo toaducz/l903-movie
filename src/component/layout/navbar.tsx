@@ -27,8 +27,16 @@ export default function Navbar() {
   const [openMenu, setOpenMenu] = useState<'category' | 'country' | 'year' | 'notification' | null>(null)
   const MAX_SEARCH_LENGTH = 100
   const suggestionRef = useRef<HTMLDivElement>(null)
-  const { data: categoryData, isLoading: categoryLoading } = useQuery(getCategorySlug())
-  const { data: countryData, isLoading: countryLoading } = useQuery(getCountrySlug())
+  const isPublicPage = pathname === '/login' || pathname === '/home'
+
+  const { data: categoryData, isLoading: categoryLoading } = useQuery({
+    ...getCategorySlug(),
+    enabled: !isPublicPage
+  })
+  const { data: countryData, isLoading: countryLoading } = useQuery({
+    ...getCountrySlug(),
+    enabled: !isPublicPage
+  })
 
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedSearch(search.trim()), 250)
