@@ -265,6 +265,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
         let adRegions: Array<{ start: number; end: number; skipped?: boolean }> = []
         let mutedByAd = false
         let adRafId: number | null = null
+        let isSeekingAd = false
 
         const calculateAdRegions = () => {
           const tech = player.tech() as unknown as VHSTech
@@ -308,6 +309,13 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
 
         player.on('loadedmetadata', calculateAdRegions)
         player.on('mediachange', calculateAdRegions)
+        player.on('canplay', calculateAdRegions)
+
+        // VHS khởi tạo bất đồng bộ — tại thời điểm loadedmetadata, tech?.vhs
+        // hoặc vhs.playlists.media() vẫn có thể là null nếu xem từ đầu.
+        // Retry sau 500ms và 1500ms để đảm bảo luôn có adRegions.
+        setTimeout(calculateAdRegions, 500)
+        setTimeout(calculateAdRegions, 1500)
 
         const pollAds = () => {
           if (player.isDisposed()) return
@@ -326,9 +334,14 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
               player.muted(true)
               mutedByAd = true
             }
-            if (currentTime >= upcoming.start && currentTime < upcoming.end - 0.1) {
-              // 2. Ép tua đi (Logic cũ của bạn)
+            // 2. Chỉ seek DUY NHẤT 1 LẦN mỗi vùng QC để tránh double-seek
+            // RAF ~60fps → nếu không có flag, currentTime(upcoming.end) bị gọi
+            // liên tục trong khi seek chưa hoàn thành → video.js overshoot, mất phim
+            if (!upcoming.skipped && !isSeekingAd && currentTime >= upcoming.start && currentTime < upcoming.end - 0.1) {
+              upcoming.skipped = true
+              isSeekingAd = true
               player.currentTime(upcoming.end)
+              player.one('seeked', () => { isSeekingAd = false })
             }
           } else if (mutedByAd) {
             // 3. KHI ĐÃ TUA QUA KHỎI VÙNG QUẢNG CÁO
