@@ -1,7 +1,7 @@
 import { Metadata } from 'next'
 
 export const metadata: Metadata = {
-  title: 'L903',
+  title: 'Service Unavailable',
   description: ''
 }
 
