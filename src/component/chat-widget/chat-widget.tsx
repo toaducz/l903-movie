@@ -12,7 +12,7 @@ export default function ChatWidget() {
   const [hidden, setHidden] = useState(false)
   const pathname = usePathname()
 
-  if (pathname == '/login') return null
+  if (pathname == '/login' || pathname == '/home') return null
 
   // Đã ẩn thì không render gì hết
   if (hidden) return null
@@ -33,10 +33,27 @@ export default function ChatWidget() {
   //   }
 
   return (
-    <div style={{ position: 'fixed', bottom: '24px', right: '24px', zIndex: 50, display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+    <div
+      style={{
+        position: 'fixed',
+        bottom: '24px',
+        right: '24px',
+        zIndex: 50,
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'flex-end'
+      }}
+    >
       {/* Khung chat */}
       {isOpen && (
-        <div style={{ marginBottom: '12px', borderRadius: '12px', overflow: 'hidden', boxShadow: '0 8px 32px rgba(0,0,0,.5)' }}>
+        <div
+          style={{
+            marginBottom: '12px',
+            borderRadius: '12px',
+            overflow: 'hidden',
+            boxShadow: '0 8px 32px rgba(0,0,0,.5)'
+          }}
+        >
           <DeepChat
             demo={true}
             style={{ width: '350px', height: '500px', borderRadius: '12px' }}
@@ -48,7 +65,7 @@ export default function ChatWidget() {
             }}
             // request={{ handler: handleChatRequest }}
             textInput={{ placeholder: { text: 'Hỏi phim gì đi...' } }}
-          // initialMessages={[{ role: 'ai', text: 'Chào bạn! Mình là AI Agent tìm phim. Mình có thể giúp gì?' }]}
+            // initialMessages={[{ role: 'ai', text: 'Chào bạn! Mình là AI Agent tìm phim. Mình có thể giúp gì?' }]}
           />
         </div>
       )}

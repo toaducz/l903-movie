@@ -6,7 +6,7 @@ import { usePathname } from 'next/navigation'
 export default function Footer() {
   const pathname = usePathname()
 
-  if (pathname === '/login') return null
+  if (pathname === '/login' || pathname === '/home') return null
 
   return (
     <footer className='mt-16 px-5 sm:px-10 py-8 border-t' style={{ borderColor: 'var(--c-line)' }}>
