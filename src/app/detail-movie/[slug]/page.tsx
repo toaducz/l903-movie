@@ -406,9 +406,10 @@ export default function WatchPage() {
                 <button
                   onClick={() => setUseBackupPlayer(prev => !prev)}
                   className={`px-4 py-1.5 text-xs font-bold rounded-full transition cursor-pointer border
-                    ${useBackupPlayer
-                      ? 'bg-[var(--c-yel)] text-[var(--c-bg)] border-[var(--c-yel)]'
-                      : 'bg-transparent text-[var(--c-cyan)] border-[var(--c-cyan)] hover:bg-[var(--c-cyan)]/10'
+                    ${
+                      useBackupPlayer
+                        ? 'bg-[var(--c-yel)] text-[var(--c-bg)] border-[var(--c-yel)]'
+                        : 'bg-transparent text-[var(--c-cyan)] border-[var(--c-cyan)] hover:bg-[var(--c-cyan)]/10'
                     }`}
                 >
                   {useBackupPlayer ? '⚡ DỰ PHÒNG - ĐỔI VỀ SERVER CHÍNH' : '⇄ DÙNG LINK DỰ PHÒNG (CÓ QUẢNG CÁO)'}
@@ -425,19 +426,19 @@ export default function WatchPage() {
                     onProgress={
                       user
                         ? (time, duration) => {
-                          fetch('/api/history', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({
-                              slug: movie.slug,
-                              name: movie.name,
-                              image: movie.poster_url,
-                              episode_name: episodeToPlay.name,
-                              progress: time,
-                              duration
+                            fetch('/api/history', {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({
+                                slug: movie.slug,
+                                name: movie.name,
+                                image: movie.poster_url,
+                                episode_name: episodeToPlay.name,
+                                progress: time,
+                                duration
+                              })
                             })
-                          })
-                        }
+                          }
                         : undefined
                     }
                     options={{
@@ -531,6 +532,19 @@ export default function WatchPage() {
               {!isAvailable ? 'Đang tải tập phim...' : 'Phim chưa cập nhật tập mới...'}
             </div>
           )}
+        </div>
+        <div className='mb-8 p-2 rounded-xl border border-white/5 bg-white/2 space-y-1.5'>
+          <p className='text-xs text-white/50 flex items-center gap-2'>
+            <span className='w-1 h-1 rounded-full bg-[var(--c-pink)]' />
+            Phụ đề có thể bị lệch trên một số phim, dùng 2 phím{' '}
+            <kbd className='px-1.5 py-0.5 rounded bg-white/10 font-mono text-[var(--c-yel)]'>Z</kbd> /{' '}
+            <kbd className='px-1.5 py-0.5 rounded bg-white/10 font-mono text-[var(--c-yel)]'>X</kbd> để chỉnh tay
+            sớm/trễ.
+          </p>
+          <p className='text-xs text-white/50 flex items-center gap-2'>
+            <span className='w-1 h-1 rounded-full bg-[var(--c-pink)]' />
+            Phim nào độ phân giải dị (như 960p) có thể bị lỗi ẩn thanh progress bar khi fullscreen.
+          </p>
         </div>
 
         {/* Điều hướng tập */}

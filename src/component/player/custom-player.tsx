@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useEffect, useRef, useState, useCallback } from 'react'
+import { createPortal } from 'react-dom'
 import videojs from 'video.js'
 import Player from 'video.js/dist/types/player'
 import 'video.js/dist/video-js.css'
@@ -21,11 +22,20 @@ interface VHSPlaylist {
   segments: HLSSegment[]
 }
 
+interface VHSRepresentation {
+  id: string
+  width: number
+  height: number
+  bandwidth: number
+  enabled: (val?: boolean) => boolean
+}
+
 interface VHSTech {
   vhs?: {
     playlists: {
       media: () => VHSPlaylist | undefined
     }
+    representations: () => VHSRepresentation[]
   }
 }
 
@@ -76,6 +86,12 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
   const [showHelp, setShowHelp] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
   const [subSettings, setSubSettings] = useState<SubtitleSettings>(DEFAULT_SUBTITLE_SETTINGS)
+  const [playerEl, setPlayerEl] = useState<HTMLElement | null>(null)
+
+  // ── Quality selection state ───────────────────────────────────────────────
+  const [qualityLevels, setQualityLevels] = useState<{ id: string; label: string }[]>([])
+  const [currentQuality, setCurrentQuality] = useState<string>('auto')
+  const [showQuality, setShowQuality] = useState(false)
 
   // Load settings từ localStorage khi mount
   useEffect(() => {
@@ -98,6 +114,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
 
   const [seekHint, setSeekHint] = useState<{ side: 'left' | 'right'; key: number } | null>(null)
   const lastTapRef = useRef<{ time: number; side: 'left' | 'right' } | null>(null)
+  const qualityTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
   const handleTap = useCallback((e: React.TouchEvent<HTMLDivElement>) => {
     const player = playerRef.current
@@ -125,6 +142,22 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
     }
   }, [])
 
+  const handleSetQuality = useCallback((id: string) => {
+    const player = playerRef.current
+    if (!player) return
+    const tech = player.tech() as unknown as VHSTech
+    const reps = tech.vhs?.representations()
+    if (!reps) return
+
+    if (id === 'auto') {
+      reps.forEach(r => r.enabled(true))
+    } else {
+      reps.forEach(r => r.enabled(r.id === id))
+    }
+    setCurrentQuality(id)
+    setShowQuality(false)
+  }, [])
+
   useEffect(() => {
     if (!playerRef.current && videoRef.current) {
       const videoElement = document.createElement('video-js')
@@ -133,9 +166,17 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
 
       const mergedOptions = {
         ...options,
+        html5: {
+          vhs: {
+            limitRenditionByPlayerDimensions: false,
+            useDevicePixelRatio: false,
+            ...(options as { html5?: { vhs?: Record<string, unknown> } })?.html5?.vhs
+          }
+        },
         playbackRates: [0.5, 0.75, 1, 1.25, 1.5, 2],
         controlBar: {
           skipButtons: { backward: 10, forward: 10 },
+          pictureInPictureToggle: false,
           ...(((options as Record<string, unknown>)?.controlBar as object) ?? {})
         }
       }
@@ -143,6 +184,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
       currentSrcRef.current = (options?.sources as Array<{ src: string }> | undefined)?.[0]?.src
       progressKeyRef.current = progressKey
       const player = (playerRef.current = videojs(videoElement, mergedOptions, () => {
+        setPlayerEl(player.el() as HTMLElement)
         // bắt bàn phím
         const handleKeyDown = (e: KeyboardEvent) => {
           const target = e.target as HTMLElement
@@ -237,18 +279,50 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
         window.addEventListener('keydown', handleKeyDown)
 
         const handleMouseMove = () => {
-          player.userActive(true)
+          if (playerRef.current) {
+            playerRef.current.userActive(true)
+          }
         }
         const playerEl = player.el() as HTMLElement | null
         if (playerEl) {
           playerEl.addEventListener('mousemove', handleMouseMove)
+          playerEl.addEventListener('mousedown', handleMouseMove)
+          playerEl.addEventListener('touchstart', handleMouseMove)
         }
 
-        // xoay ngang
+        // xoay ngang + fix control bar trong fullscreen
+        let fullscreenPointerHandler: (() => void) | null = null
+
         const handleFullscreenChange = () => {
           if (player.isFullscreen()) {
             player.focus()
+
+            const controlBar = player.getChild('controlBar')
+            if (controlBar) {
+              const el = controlBar.el() as HTMLElement
+              if (el) {
+                const prevDisplay = el.style.display
+                el.style.display = 'none'
+                void el.offsetHeight // Cú lừa trigger reflow
+                el.style.display = prevDisplay
+              }
+            }
+
+            if (!fullscreenPointerHandler) {
+              fullscreenPointerHandler = () => {
+                if (playerRef.current && !playerRef.current.isDisposed()) {
+                  playerRef.current.userActive(true)
+                }
+              }
+              document.addEventListener('pointermove', fullscreenPointerHandler)
+            }
+          } else {
+            if (fullscreenPointerHandler) {
+              document.removeEventListener('pointermove', fullscreenPointerHandler)
+              fullscreenPointerHandler = null
+            }
           }
+
           const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
           if (!isMobile) return
 
@@ -276,11 +350,37 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
         }
         player.on('fullscreenchange', handleFullscreenChange)
 
+        const updateQualityLevels = () => {
+          const tech = player.tech() as unknown as VHSTech
+          const reps = tech?.vhs?.representations()
+          if (reps && reps.length > 0) {
+            const levels = reps
+              .map(r => ({
+                id: r.id,
+                label: r.height ? `${r.height}p` : 'N/A'
+              }))
+              .sort((a, b) => parseInt(b.label) - parseInt(a.label))
+
+            const uniqueLevels = levels.filter((v, i, a) => a.findIndex(t => t.label === v.label) === i)
+
+            // Chỉ cập nhật nếu thực sự có sự thay đổi về danh sách độ phân giải để tránh nháy (re-render portal)
+            setQualityLevels(prev => {
+              if (prev.length === uniqueLevels.length && prev.every((l, i) => l.label === uniqueLevels[i].label)) {
+                return prev
+              }
+              return uniqueLevels
+            })
+          }
+        }
+
+        player.on('loadedmetadata', updateQualityLevels)
+        player.on('mediachange', updateQualityLevels)
+
         let adRegions: Array<{ start: number; end: number; skipped?: boolean }> = []
         let mutedByAd = false
         let adRafId: number | null = null
         let isSeekingAd = false
-        let adRegionsReady = false // true khi VHS đã sẵn sàng và segment list đầy đủ
+        let adRegionsReady = false
 
         const calculateAdRegions = () => {
           const tech = player.tech() as unknown as VHSTech
@@ -290,23 +390,16 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
           const media = vhs.playlists.media()
           if (!media?.segments?.length) return
 
-          // ── Validate segment list đầy đủ ────────────────────────────────────
-          // VHS có thể trả về sliding window (chỉ một phần segments), khiến
-          // currentTimeAcc của ad segment bị tính sai (= 0 thay vì vị trí thật).
-          // So sánh tổng duration của segments với player.duration():
-          // nếu chênh lệch > 15% → list chưa đầy đủ → bỏ qua lần này.
           const playerDuration = player.duration() ?? 0
           if (playerDuration > 0) {
             const segTotal = media.segments.reduce((s, seg) => s + (seg.duration || 0), 0)
-            if (segTotal < playerDuration * 0.85) return // partial list → skip
+            if (segTotal < playerDuration * 0.85) return
           }
 
-          adRegionsReady = true // VHS ready và list hợp lệ
+          adRegionsReady = true
 
           let currentTimeAcc = 0
           const newAdRegions: Array<{ start: number; end: number }> = []
-
-          // \d{4,}\.ts = pattern kiểu 000010.ts (tên toàn số từ 4 chữ số trở lên)
           const adRegex = /^(segment_\d+|ads?_.*|promo_.*|\d{4,})\.ts$/i
 
           media.segments.forEach(segment => {
@@ -318,7 +411,6 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
             currentTimeAcc += segment.duration
           })
 
-          // Merge các region liền nhau
           const merged: Array<{ start: number; end: number; skipped?: boolean }> = []
           for (const region of newAdRegions) {
             const last = merged[merged.length - 1]
@@ -329,13 +421,10 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
             }
           }
 
-          // Giữ lại trạng thái skipped từ lần tính trước
-          // (tránh recalc làm mất flag → seek lại vùng đã skip)
           for (const newR of merged) {
             const old = adRegions.find(r => Math.abs(r.start - newR.start) < 2 && Math.abs(r.end - newR.end) < 2)
             if (old?.skipped) newR.skipped = true
           }
-
           adRegions = merged
         }
 
@@ -346,30 +435,21 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
         const pollAds = () => {
           if (player.isDisposed()) return
           adRafId = requestAnimationFrame(pollAds)
-
-          // Retry mỗi frame cho đến khi VHS sẵn sàng và segment list hợp lệ
-          // (thay thế setTimeout retry để tránh fire mid-playback với timing sai)
           if (!adRegionsReady) {
             calculateAdRegions()
             return
           }
-
           if (adRegions.length === 0) return
           const currentTime = player.currentTime() ?? 0
-
-          const PRE_MUTE = 0.2 // giớ hạn kĩ thuật nên phải pre muted 0.2 :v
+          const PRE_MUTE = 0.2
           const upcoming = adRegions.find(r => currentTime >= r.start - PRE_MUTE && currentTime < r.end)
 
           if (upcoming) {
             if (!mutedByAd) {
-              // 1. NGAY LÚC PHÁT HIỆN: Sập rèm đen & Tắt tiếng
               if (blackScreenRef.current) blackScreenRef.current.style.opacity = '1'
               player.muted(true)
               mutedByAd = true
             }
-            // 2. Chỉ seek DUY NHẤT 1 LẦN mỗi vùng QC để tránh double-seek
-            // RAF ~60fps → nếu không có flag, currentTime(upcoming.end) bị gọi
-            // liên tục trong khi seek chưa hoàn thành → video.js overshoot, mất phim
             if (
               !upcoming.skipped &&
               !isSeekingAd &&
@@ -384,8 +464,6 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
               })
             }
           } else if (mutedByAd) {
-            // 3. KHI ĐÃ TUA QUA KHỎI VÙNG QUẢNG CÁO
-            // Dùng setTimeout 150ms để đợi video js load xong frame phim thật rồi mới mở rèm lên
             setTimeout(() => {
               if (blackScreenRef.current) blackScreenRef.current.style.opacity = '0'
               player.muted(false)
@@ -393,7 +471,6 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
             }, 150)
           }
 
-          // ── Subtitle sync (60fps, binary search O(log n)) ──────────────────
           if (!showSubRef.current) {
             if (activeSub1Ref.current !== null) {
               activeSub1Ref.current = null
@@ -407,14 +484,11 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
             let adTimePassed = 0
             let inAd = false
             for (const region of adRegions) {
-              if (currentTime >= region.end) {
-                adTimePassed += region.end - region.start
-              } else if (currentTime >= region.start && currentTime < region.end) {
+              if (currentTime >= region.end) adTimePassed += region.end - region.start
+              else if (currentTime >= region.start && currentTime < region.end) {
                 inAd = true
                 break
-              } else {
-                break
-              }
+              } else break
             }
             if (inAd) {
               if (activeSub1Ref.current !== null) {
@@ -447,10 +521,15 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
           window.removeEventListener('keydown', handleKeyDown)
           if (playerEl) {
             playerEl.removeEventListener('mousemove', handleMouseMove)
+            playerEl.removeEventListener('mousedown', handleMouseMove)
+            playerEl.removeEventListener('touchstart', handleMouseMove)
+          }
+          if (fullscreenPointerHandler) {
+            document.removeEventListener('pointermove', fullscreenPointerHandler)
+            fullscreenPointerHandler = null
           }
         })
 
-        // Restore vị trí xem — ưu tiên giá trị lớn hơn giữa URL (cross-device) và localStorage (same device)
         const saved = Math.max(initialTime ?? 0, progressKey ? getWatchProgress(progressKey) : 0)
         if (saved > 0) {
           player.one('loadedmetadata', () => {
@@ -459,9 +538,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
           })
         }
 
-        // Lưu vị trí xem mỗi 5s
         let lastSaved = 0
-
         const handleSaveProgress = () => {
           const key = progressKeyRef.current
           if (!key) return
@@ -475,28 +552,17 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
           lastSaved = current
         }
 
-        // Khi video đang chạy
         player.on('timeupdate', () => {
           const current = player.currentTime() ?? 0
-          // fix trường hợp tua lùi thì cũng lưu, xài cái này cho nó không âm
-          if (Math.abs(current - lastSaved) >= 5) {
-            handleSaveProgress()
-          }
+          if (Math.abs(current - lastSaved) >= 5) handleSaveProgress()
         })
 
-        // tua cái là lưu luôn ??
-        // player.on('seeked', () => {
-        //   handleSaveProgress()
-        // })
-
-        // Xóa khi xem xong + callback cho parent
         player.on('ended', () => {
           const key = progressKeyRef.current
           if (key) clearWatchProgress(key)
           onEndedRef.current?.()
         })
 
-        // Thêm nút tua 90s vào control bar — bên phải, trước nút fullscreen
         const controlBarEl = player.el()?.querySelector('.vjs-control-bar') as HTMLElement | null
         if (controlBarEl) {
           const skip90Btn = document.createElement('button')
@@ -518,11 +584,42 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
             player.currentTime(Math.min(duration, current + 90))
           })
           const fsBtn = controlBarEl.querySelector('.vjs-fullscreen-control')
-          if (fsBtn) {
-            controlBarEl.insertBefore(skip90Btn, fsBtn)
-          } else {
-            controlBarEl.appendChild(skip90Btn)
-          }
+          if (fsBtn) controlBarEl.insertBefore(skip90Btn, fsBtn)
+          else controlBarEl.appendChild(skip90Btn)
+
+          const qualityBtn = document.createElement('button')
+          qualityBtn.className = 'vjs-quality-button vjs-control vjs-button'
+          qualityBtn.title = 'Chất lượng'
+          qualityBtn.setAttribute('type', 'button')
+          qualityBtn.innerHTML = `
+            <span class="vjs-icon-placeholder" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="currentColor" style="width: 18px; height: 18px; margin: auto;">
+                <path d="M15 21h2v-2h-2v2zm4-12h2V7h-2v2zM3 5v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2zm16 14H5V5h14v14zm-4-4h2v-2h-2v2zm0-4h2V9h-2v2zM9 13h2v-2H9v2zm0 4h2v-2H9v2zm0-8h2V7H9v2z" />
+              </svg>
+            </span>
+            <span class="vjs-control-text" aria-live="polite">Chất lượng</span>
+          `
+          qualityBtn.addEventListener('click', () => {
+            setShowQuality(v => !v)
+            setShowSettings(false)
+            setShowHelp(false)
+          })
+          qualityBtn.addEventListener('mouseenter', () => {
+            if (qualityTimeoutRef.current) clearTimeout(qualityTimeoutRef.current)
+            setShowQuality(true)
+            setShowSettings(false)
+            setShowHelp(false)
+          })
+          qualityBtn.addEventListener('mouseleave', () => {
+            qualityTimeoutRef.current = setTimeout(() => {
+              setShowQuality(false)
+            }, 200)
+          })
+
+          const playbackBtn = controlBarEl.querySelector('.vjs-playback-rate')
+          if (playbackBtn) controlBarEl.insertBefore(qualityBtn, playbackBtn)
+          else if (fsBtn) controlBarEl.insertBefore(qualityBtn, fsBtn)
+          else controlBarEl.appendChild(qualityBtn)
         }
 
         if (onReady) onReady(player)
@@ -545,7 +642,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
         }
       }
     }
-  }, [options, onReady])
+  }, [options, onReady, initialTime, progressKey])
 
   useEffect(() => {
     return () => {
@@ -558,154 +655,206 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
   }, [])
 
   return (
-    <div data-vjs-player className='absolute top-0 left-0 w-full h-full overflow-hidden' onTouchEnd={handleTap}>
+    <div
+      data-vjs-player
+      className='absolute top-0 left-0 w-full h-full overflow-hidden'
+      onMouseMove={() => playerRef.current?.userActive(true)}
+      onMouseDown={() => playerRef.current?.userActive(true)}
+      onTouchStart={() => playerRef.current?.userActive(true)}
+      onTouchEnd={handleTap}
+    >
       <div ref={videoRef} className='w-full h-full' />
 
-      <div
-        ref={blackScreenRef}
-        className='pointer-events-none absolute top-0 left-0 w-full h-full bg-black z-50 flex items-center justify-center'
-        style={{ opacity: 0, transition: 'opacity 0.1s ease-in-out' }}
-      >
-        <span className='text-sm font-semibold drop-shadow'>Bỏ qua QC...</span>
-      </div>
-
-      {seekHint && (
-        <div
-          key={seekHint.key}
-          className={`pointer-events-none absolute top-1/2 -translate-y-1/2 flex flex-col items-center gap-1 text-white animate-seek-hint ${
-            seekHint.side === 'left' ? 'left-6' : 'right-6'
-          }`}
-        >
-          <div className='rounded-full bg-white/20 p-4 text-2xl'>{seekHint.side === 'left' ? '«' : '»'}</div>
-          <span className='text-sm font-semibold drop-shadow'>{seekHint.side === 'right' ? '+10s' : '-10s'}</span>
-        </div>
-      )}
-
-      {/* Subtitle overlay — vị trí và màu theo settings */}
-      {showSub && (activeSub1 || activeSub2) && (
-        <div
-          className='pointer-events-none absolute left-0 right-0 text-center z-40 px-6'
-          style={{ bottom: `${subSettings.bottomOffset}%` }}
-        >
-          {activeSub1 && (
-            <p
-              className='text-base md:text-lg font-semibold leading-snug mb-0.5 inline-block rounded px-1'
-              style={{
-                color: subSettings.sub1Color,
-                backgroundColor: subSettings.bgColor,
-                textShadow: '0 1px 3px #000'
-              }}
+      {playerEl &&
+        createPortal(
+          <>
+            <div
+              ref={blackScreenRef}
+              className='pointer-events-none absolute top-0 left-0 w-full h-full bg-black z-[110] flex items-center justify-center'
+              style={{ opacity: 0, transition: 'opacity 0.1s ease-in-out' }}
             >
-              {activeSub1}
-            </p>
-          )}
-          {activeSub2 && (
-            <p
-              className='text-sm md:text-base leading-snug inline-block rounded px-1'
-              style={{
-                color: subSettings.sub2Color,
-                backgroundColor: subSettings.bgColor,
-                textShadow: '0 1px 3px #000'
+              <span className='text-sm font-semibold drop-shadow'>Bỏ qua QC...</span>
+            </div>
+
+            {seekHint && (
+              <div
+                key={seekHint.key}
+                className={`pointer-events-none absolute top-1/2 -translate-y-1/2 flex flex-col items-center gap-1 text-white animate-seek-hint ${
+                  seekHint.side === 'left' ? 'left-6' : 'right-6'
+                }`}
+                style={{ zIndex: 110 }}
+              >
+                <div className='rounded-full bg-white/20 p-4 text-2xl'>{seekHint.side === 'left' ? '«' : '»'}</div>
+                <span className='text-sm font-semibold drop-shadow'>{seekHint.side === 'right' ? '+10s' : '-10s'}</span>
+              </div>
+            )}
+
+            {showSub && (activeSub1 || activeSub2) && (
+              <div
+                className='pointer-events-none absolute left-0 right-0 text-center z-[90] px-6'
+                style={{ bottom: `${subSettings.bottomOffset}%` }}
+              >
+                {activeSub1 && (
+                  <p
+                    className='text-base md:text-lg font-semibold leading-snug mb-0.5 inline-block rounded px-1'
+                    style={{
+                      color: subSettings.sub1Color,
+                      backgroundColor: subSettings.bgColor,
+                      textShadow: '0 1px 3px #000'
+                    }}
+                  >
+                    {activeSub1}
+                  </p>
+                )}
+                {activeSub2 && (
+                  <p
+                    className='text-sm md:text-base leading-snug inline-block rounded px-1'
+                    style={{
+                      color: subSettings.sub2Color,
+                      backgroundColor: subSettings.bgColor,
+                      textShadow: '0 1px 3px #000'
+                    }}
+                  >
+                    {activeSub2}
+                  </p>
+                )}
+              </div>
+            )}
+
+            {subOffset !== 0 && (
+              <div className='pointer-events-none absolute top-2 right-2 z-[110]'>
+                <span className='text-xs bg-black/70 text-white rounded px-2 py-1 font-mono'>
+                  Sub {subOffset > 0 ? '+' : ''}
+                  {subOffset}s
+                </span>
+              </div>
+            )}
+
+            <button
+              onClick={e => {
+                e.stopPropagation()
+                setShowHelp(v => !v)
+                setShowSettings(false)
+                setShowQuality(false)
               }}
+              className='absolute top-2 left-2 z-[110] w-6 h-6 rounded-full bg-black/50 text-white text-xs flex items-center justify-center hover:bg-black/80 transition-opacity opacity-30 hover:opacity-100 cursor-pointer'
+              title='Hướng dẫn phím tắt'
             >
-              {activeSub2}
-            </p>
-          )}
-        </div>
-      )}
+              ?
+            </button>
 
-      {/* Sub offset indicator */}
-      {subOffset !== 0 && (
-        <div className='pointer-events-none absolute top-2 right-2 z-50'>
-          <span className='text-xs bg-black/70 text-white rounded px-2 py-1 font-mono'>
-            Sub {subOffset > 0 ? '+' : ''}
-            {subOffset}s
-          </span>
-        </div>
-      )}
+            <button
+              onClick={e => {
+                e.stopPropagation()
+                setShowSettings(v => !v)
+                setShowHelp(false)
+                setShowQuality(false)
+              }}
+              className='absolute top-2 left-9 z-[110] w-6 h-6 rounded-full bg-black/50 text-white text-xs flex items-center justify-center hover:bg-black/80 transition-opacity opacity-30 hover:opacity-100 cursor-pointer'
+              title='Cài đặt phụ đề'
+            >
+              ⚙
+            </button>
 
-      {/* Help button & panel */}
-      <button
-        onClick={() => {
-          setShowHelp(v => !v)
-          setShowSettings(false)
-        }}
-        className='absolute top-2 left-2 z-50 w-6 h-6 rounded-full bg-black/50 text-white text-xs flex items-center justify-center hover:bg-black/80 transition-opacity opacity-30 hover:opacity-100'
-        title='Hướng dẫn phím tắt'
-      >
-        ?
-      </button>
+            {(showHelp || showSettings) && (
+              <div
+                className='absolute inset-0 z-[100] cursor-default'
+                onClick={e => {
+                  e.stopPropagation()
+                  setShowHelp(false)
+                  setShowSettings(false)
+                }}
+                onTouchEnd={e => {
+                  e.stopPropagation()
+                  setShowHelp(false)
+                  setShowSettings(false)
+                }}
+              />
+            )}
 
-      {/* Settings button */}
-      <button
-        onClick={() => {
-          setShowSettings(v => !v)
-          setShowHelp(false)
-        }}
-        className='absolute top-2 left-9 z-50 w-6 h-6 rounded-full bg-black/50 text-white text-xs flex items-center justify-center hover:bg-black/80 transition-opacity opacity-30 hover:opacity-100'
-        title='Cài đặt phụ đề'
-      >
-        ⚙
-      </button>
+            {showHelp && (
+              <div className='absolute top-9 left-2 z-[110] bg-black/85 text-white rounded-lg p-3 text-xs space-y-1 min-w-[220px] backdrop-blur-sm'>
+                <p className='font-semibold text-gray-300 mb-2'>⌨ Phím tắt</p>
+                <div className='grid grid-cols-[auto_1fr] gap-x-3 gap-y-1'>
+                  <kbd className='font-mono bg-white/10 rounded px-1'>Space</kbd>
+                  <span>Tạm dừng / Phát</span>
+                  <kbd className='font-mono bg-white/10 rounded px-1'>← →</kbd>
+                  <span>Tua ±10 giây</span>
+                  <kbd className='font-mono bg-white/10 rounded px-1'>↑ ↓</kbd>
+                  <span>Âm lượng ±10%</span>
+                  <kbd className='font-mono bg-white/10 rounded px-1'>0–9</kbd>
+                  <span>Nhảy đến % thời gian</span>
+                  <kbd className='font-mono bg-white/10 rounded px-1'>[ ]</kbd>
+                  <span>Tốc độ phát</span>
+                  <kbd className='font-mono bg-white/10 rounded px-1'>M</kbd>
+                  <span>Tắt / Bật tiếng</span>
+                  <kbd className='font-mono bg-white/10 rounded px-1'>F</kbd>
+                  <span>Toàn màn hình</span>
+                  <kbd className='font-mono bg-white/10 rounded px-1'>T</kbd>
+                  <span>Picture-in-Picture</span>
+                  <kbd className='font-mono bg-white/10 rounded px-1'>C</kbd>
+                  <span>Ẩn / Hiện phụ đề</span>
+                  <kbd className='font-mono bg-white/10 rounded px-1'>Z / X</kbd>
+                  <span>Phụ đề sớm / trễ 0.5s</span>
+                </div>
+              </div>
+            )}
 
-      {/* Click outside overlay */}
-      {(showHelp || showSettings) && (
-        <div
-          className='absolute inset-0 z-40 cursor-default'
-          onClick={e => {
-            e.stopPropagation()
-            setShowHelp(false)
-            setShowSettings(false)
-          }}
-          onTouchEnd={e => {
-            e.stopPropagation()
-            setShowHelp(false)
-            setShowSettings(false)
-          }}
-        />
-      )}
+            {showSettings && (
+              <div className='absolute top-9 left-9 z-[110] bg-black/90 rounded-lg p-4 min-w-[260px] backdrop-blur-sm'>
+                <p className='text-white text-xs font-semibold mb-3'>⚙ Cài đặt phụ đề</p>
+                <SubtitleSettingsPanel
+                  compact
+                  settings={subSettings}
+                  onChange={s => {
+                    setSubSettings(s)
+                    saveSubtitleSettings(s)
+                  }}
+                />
+              </div>
+            )}
 
-      {showHelp && (
-        <div className='absolute top-9 left-2 z-50 bg-black/85 text-white rounded-lg p-3 text-xs space-y-1 min-w-[220px] backdrop-blur-sm'>
-          <p className='font-semibold text-gray-300 mb-2'>⌨ Phím tắt</p>
-          <div className='grid grid-cols-[auto_1fr] gap-x-3 gap-y-1'>
-            <kbd className='font-mono bg-white/10 rounded px-1'>Space</kbd>
-            <span>Tạm dừng / Phát</span>
-            <kbd className='font-mono bg-white/10 rounded px-1'>← →</kbd>
-            <span>Tua ±10 giây</span>
-            <kbd className='font-mono bg-white/10 rounded px-1'>↑ ↓</kbd>
-            <span>Âm lượng ±10%</span>
-            <kbd className='font-mono bg-white/10 rounded px-1'>0–9</kbd>
-            <span>Nhảy đến % thời gian</span>
-            <kbd className='font-mono bg-white/10 rounded px-1'>[ ]</kbd>
-            <span>Tốc độ phát</span>
-            <kbd className='font-mono bg-white/10 rounded px-1'>M</kbd>
-            <span>Tắt / Bật tiếng</span>
-            <kbd className='font-mono bg-white/10 rounded px-1'>F</kbd>
-            <span>Toàn màn hình</span>
-            <kbd className='font-mono bg-white/10 rounded px-1'>T</kbd>
-            <span>Picture-in-Picture</span>
-            <kbd className='font-mono bg-white/10 rounded px-1'>C</kbd>
-            <span>Ẩn / Hiện phụ đề</span>
-            <kbd className='font-mono bg-white/10 rounded px-1'>Z / X</kbd>
-            <span>Phụ đề sớm / trễ 0.5s</span>
-          </div>
-        </div>
-      )}
+            {showQuality && (
+              <div
+                onMouseEnter={() => {
+                  if (qualityTimeoutRef.current) clearTimeout(qualityTimeoutRef.current)
+                }}
+                onMouseLeave={() => setShowQuality(false)}
+                className='absolute bottom-[3.5em] right-[4em] md:right-[5.5em] z-[110] bg-[#2b333f]/90 min-w-[100px] border border-white/5 shadow-2xl animate-in fade-in slide-in-from-bottom-2 duration-200'
+              >
+                <div className='flex flex-col max-h-[250px] overflow-y-auto scrollbar-hide'>
+                  {qualityLevels.map(level => (
+                    <button
+                      key={level.id}
+                      onClick={() => handleSetQuality(level.id)}
+                      className='flex items-center justify-center w-full h-10 text-sm transition-all cursor-pointer hover:bg-[#505050]'
+                      style={{
+                        color: currentQuality === level.id ? '#4ade80' : '#eee',
+                        fontWeight: currentQuality === level.id ? 700 : 400,
+                        background: currentQuality === level.id ? 'rgba(255,255,255,0.05)' : undefined
+                      }}
+                    >
+                      <span>{level.label}</span>
+                    </button>
+                  ))}
+                  <button
+                    onClick={() => handleSetQuality('auto')}
+                    className='flex items-center justify-center w-full h-10 text-sm transition-all cursor-pointer border-t border-white/5 hover:bg-[#505050]'
+                    style={{
+                      color: currentQuality === 'auto' ? '#4ade80' : '#eee',
+                      fontWeight: currentQuality === 'auto' ? 700 : 400,
+                      background: currentQuality === 'auto' ? 'rgba(255,255,255,0.05)' : undefined
+                    }}
+                  >
+                    <span>Auto</span>
+                  </button>
+                </div>
+              </div>
+            )}
+          </>,
+          playerEl
+        )}
 
-      {showSettings && (
-        <div className='absolute top-9 left-2 z-50 bg-black/90 rounded-lg p-4 min-w-[260px] backdrop-blur-sm'>
-          <p className='text-white text-xs font-semibold mb-3'>⚙ Cài đặt phụ đề</p>
-          <SubtitleSettingsPanel
-            compact
-            settings={subSettings}
-            onChange={s => {
-              setSubSettings(s)
-              saveSubtitleSettings(s)
-            }}
-          />
-        </div>
-      )}
       <style jsx global>{`
         .video-js {
           width: 100% !important;
@@ -714,11 +863,54 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
           top: 0;
           left: 0;
         }
+        .video-js .vjs-control-bar {
+          z-index: 10 !important;
+        }
+        .video-js.vjs-user-active .vjs-control-bar {
+          opacity: 1 !important;
+          visibility: visible !important;
+          pointer-events: auto !important;
+        }
+        .video-js.vjs-user-inactive.vjs-playing .vjs-control-bar {
+          opacity: 0 !important;
+          pointer-events: none !important;
+        }
+        .video-js .vjs-tech {
+          z-index: 0 !important;
+          opacity: 0.9999;
+        }
+
+        .video-js.vjs-fullscreen .vjs-control-bar {
+          display: flex !important;
+          opacity: 1 !important;
+          visibility: visible !important;
+          transform: translateZ(10px) !important;
+          -webkit-transform: translateZ(10px) !important;
+          will-change: transform, opacity;
+          z-index: 2147483647 !important;
+          background: linear-gradient(0deg, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.4) 50%, rgba(0,0,0,0) 100%) !important;
+        }
+
+        .video-js.vjs-fullscreen .vjs-progress-control {
+          z-index: 2147483647 !important;
+          pointer-events: auto !important;
+        }
+
+        .video-js.vjs-fullscreen .vjs-tech {
+          transform: translateZ(0) !important;
+          -webkit-transform: translateZ(0) !important;
+          z-index: 1 !important;
+        }
+
+        .video-js .vjs-big-play-button {
+          z-index: 11 !important;
+          transform: translate3d(0, 0, 0);
+        }
         .vjs-poster {
           background-size: cover !important;
         }
         .vjs-skip-90s-button {
-          cursor: pointer;
+          cursor: pointer !important;
           flex: none;
           position: relative;
           width: 3em;
@@ -726,6 +918,12 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
           display: flex;
           align-items: center;
           justify-content: center;
+        }
+        .vjs-quality-button {
+          cursor: pointer !important;
+        }
+        .vjs-quality-button svg {
+          pointer-events: none;
         }
         .vjs-skip-90s-button .vjs-icon-placeholder {
           display: flex;
@@ -738,7 +936,6 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
           opacity: 0.8;
         }
 
-        /* Ẩn bớt các chức năng không quan trọng trên điện thoại màn hình dọc */
         @media (max-width: 768px) and (orientation: portrait) {
           .video-js .vjs-volume-panel,
           .video-js .vjs-picture-in-picture-control,
@@ -746,14 +943,11 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
           .video-js .vjs-skip-90s-button {
             display: none !important;
           }
-
-          /* Giảm kích thước một số nút để có thêm không gian */
           .video-js .vjs-control {
             width: 3em;
           }
         }
 
-        /* Điện thoại nhỏ nữa thì ẩn luôn nút tua +/- 10s (người dùng vẫn có thể double-tap) */
         @media (max-width: 480px) and (orientation: portrait) {
           .video-js .vjs-skip-backward-10,
           .video-js .vjs-skip-forward-10 {
