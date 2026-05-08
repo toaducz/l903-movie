@@ -405,8 +405,12 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
           media.segments.forEach(segment => {
             const url = segment.resolvedUri || segment.uri || ''
             const fileName = url.split('/').pop()?.split('?')[0]?.split('#')[0] || ''
+            // Round accumulated time to 3 decimals to prevent floating-point drift
+            // across many segments (especially on high segment-count streams)
+            const segStart = Math.round(currentTimeAcc * 1000) / 1000
+            const segEnd = Math.round((currentTimeAcc + segment.duration) * 1000) / 1000
             if (adRegex.test(fileName)) {
-              newAdRegions.push({ start: currentTimeAcc, end: currentTimeAcc + segment.duration })
+              newAdRegions.push({ start: segStart, end: segEnd })
             }
             currentTimeAcc += segment.duration
           })
@@ -458,9 +462,24 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
             ) {
               upcoming.skipped = true
               isSeekingAd = true
-              player.currentTime(upcoming.end)
+              // Add +0.3s overshoot buffer to ensure we land PAST the ad boundary.
+              // On high-refresh displays (144Hz+) the decoder's actual timestamp
+              // can differ from the manifest-accumulated nominal duration, causing
+              // a seek to the exact end to still land inside the ad.
+              const seekTarget = upcoming.end + 0.3
+              player.currentTime(seekTarget)
               player.one('seeked', () => {
-                isSeekingAd = false
+                // Post-seek verification: if we somehow still landed inside the ad
+                // region (e.g. network buffering snapped back), seek once more.
+                const ct = player.currentTime() ?? 0
+                if (ct >= upcoming.start && ct < upcoming.end) {
+                  player.currentTime(upcoming.end + 0.5)
+                  player.one('seeked', () => {
+                    isSeekingAd = false
+                  })
+                } else {
+                  isSeekingAd = false
+                }
               })
             }
           } else if (mutedByAd) {
