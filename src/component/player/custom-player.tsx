@@ -256,100 +256,84 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
                 orientation.unlock()
               }
             } catch (error) {
-              console.warn('Không thể mở khóa màn hình:', error)
+              console.warn('Không thể mở  khóa màn hình:', error)
             }
           }
         }
         player.on('fullscreenchange', handleFullscreenChange)
 
-        const adRegex = /ad|promo|advert|commercial|[0-9]{4,}/i
+        let adRegions: Array<{ start: number; end: number; skipped?: boolean }> = []
         let mutedByAd = false
         let adRafId: number | null = null
-        let isSeekingAd = false
-        const PRE_MUTE = 0.5
-
-        // adRegions được tính một lần khi load — không drift, không race condition
-        // Mỗi region lưu seekTarget = start của segment phim thật đầu tiên ngay sau block ad
-        let adRegions: Array<{ start: number; end: number; seekTarget: number }> = []
 
         const calculateAdRegions = () => {
           const tech = player.tech() as unknown as VHSTech
-          const media = tech?.vhs?.playlists.media()
-          if (!media?.segments?.length) return
+          const vhs = tech?.vhs
 
-          // Bước 1: Phân loại toàn bộ segment list một lần duy nhất
-          let acc = 0
-          const classified: Array<{ isAd: boolean; start: number; end: number }> = []
-          for (const seg of media.segments) {
-            const dur = seg.duration || 0
-            const url = seg.resolvedUri || seg.uri || ''
-            const fileName = url.split('/').pop()?.split('?')[0]?.split('#')[0]?.replace('.ts', '') || ''
-            classified.push({ isAd: adRegex.test(fileName), start: acc, end: acc + dur })
-            acc += dur
-          }
+          if (!vhs) return
+          const media = vhs.playlists.media()
+          if (!media) return
 
-          // Bước 2: Gộp các ad segment liền nhau, tính seekTarget chính xác
-          // seekTarget = start của segment NON-AD đầu tiên ngay sau block ad
-          const regions: Array<{ start: number; end: number; seekTarget: number }> = []
-          for (let i = 0; i < classified.length; i++) {
-            const seg = classified[i]
-            if (!seg.isAd) continue
+          let currentTimeAcc = 0
+          const newAdRegions: Array<{ start: number; end: number }> = []
 
-            const last = regions[regions.length - 1]
-            if (last && seg.start <= last.end + 0.5) {
-              // Kéo dài block hiện tại
-              last.end = seg.end
-              // Tìm lại seekTarget cho block đã kéo dài
-              const nextNonAd = classified.find((s, j) => j > i && !s.isAd)
-              // Không cộng thêm offset — nhảy đúng vào đầu segment phim thật
-              last.seekTarget = nextNonAd ? nextNonAd.start : seg.end
-            } else {
-              // Block mới — tìm segment phim thật đầu tiên sau block này
-              const nextNonAd = classified.find((s, j) => j > i && !s.isAd)
-              regions.push({
-                start: seg.start,
-                end: seg.end,
-                // Không cộng thêm offset — nhảy đúng vào đầu segment phim thật
-                seekTarget: nextNonAd ? nextNonAd.start : seg.end
+          // \d{4,}\.ts = pattern mới kiểu 000010.ts (tên toàn số từ 4 chữ số trở lên)
+          const adRegex = /^(segment_\d+|ads?_.*|promo_.*|\d{4,})\.ts$/i
+
+          media.segments.forEach(segment => {
+            const url = segment.resolvedUri || segment.uri || ''
+            const fileName = url.split('/').pop()?.split('?')[0]?.split('#')[0] || ''
+
+            if (adRegex.test(fileName)) {
+              newAdRegions.push({
+                start: currentTimeAcc,
+                end: currentTimeAcc + segment.duration
               })
             }
+            currentTimeAcc += segment.duration
+          })
+
+          // Merge các region liền nhau thành 1 để tránh seek nhiều lần
+          const merged: Array<{ start: number; end: number; skipped?: boolean }> = []
+          for (const region of newAdRegions) {
+            const last = merged[merged.length - 1]
+            if (last && region.start <= last.end + 1) {
+              last.end = Math.max(last.end, region.end)
+            } else {
+              merged.push({ ...region })
+            }
           }
-          adRegions = regions
+          adRegions = merged
         }
 
         player.on('loadedmetadata', calculateAdRegions)
         player.on('mediachange', calculateAdRegions)
-        player.on('canplay', calculateAdRegions)
+        player.on('seeked', calculateAdRegions)
 
         const pollAds = () => {
           if (player.isDisposed()) return
           adRafId = requestAnimationFrame(pollAds)
 
+          if (adRegions.length === 0) return
           const currentTime = player.currentTime() ?? 0
 
-          // Dùng pre-computed adRegions — không re-scan mỗi frame
-          // seekTarget đã được tính sẵn = start của segment phim thật đầu tiên sau block ad
+          const PRE_MUTE = 0.2 // giới hạn kĩ thuật nên phải pre muted 0.2
+          const DRIFT_TOLERANCE = 0.8 // bù trôi dạt do manifest rounding (~0.003s × N segments)
           const upcoming = adRegions.find(r =>
-            currentTime + PRE_MUTE >= r.start && currentTime < r.end
+            currentTime >= r.start - PRE_MUTE - DRIFT_TOLERANCE &&
+            currentTime < r.end + DRIFT_TOLERANCE
           )
 
           if (upcoming) {
             if (!mutedByAd) {
+              // 1. NGAY LÚC PHÁT HIỆN: Sập rèm đen & Tắt tiếng
               if (blackScreenRef.current) blackScreenRef.current.style.opacity = '1'
               player.muted(true)
               mutedByAd = true
             }
-            if (!isSeekingAd) {
-              isSeekingAd = true
-              const { seekTarget } = upcoming
-              // Seek thẳng tới điểm bắt đầu phim, không double-seek
-              // Double-seek cũ (seekTarget + 1.0) là nguyên nhân mất segment phim đầu
-              const safetyTimer = setTimeout(() => { isSeekingAd = false }, 3000)
-              player.one('seeked', () => {
-                clearTimeout(safetyTimer)
-                isSeekingAd = false
-              })
-              player.currentTime(seekTarget)
+            if (currentTime >= upcoming.start - DRIFT_TOLERANCE && currentTime < upcoming.end + DRIFT_TOLERANCE) {
+              // 2. Ép tua đi — overshoot 0.5s để không rơi lại đúng biên
+              player.currentTime(upcoming.end + 0.5)
             }
           } else if (mutedByAd) {
             // 3. KHI ĐÃ TUA QUA KHỎI VÙNG QUẢNG CÁO
@@ -369,9 +353,9 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
             let adTimePassed = 0
             let inAd = false
             for (const region of adRegions) {
-              if (currentTime >= region.end) {
+              if (currentTime >= region.end + DRIFT_TOLERANCE) {
                 adTimePassed += region.end - region.start
-              } else if (currentTime >= region.start && currentTime < region.end) {
+              } else if (currentTime >= region.start - DRIFT_TOLERANCE && currentTime < region.end + DRIFT_TOLERANCE) {
                 inAd = true; break
               } else { break }
             }
@@ -401,6 +385,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
         const saved = Math.max(initialTime ?? 0, progressKey ? getWatchProgress(progressKey) : 0)
         if (saved > 0) {
           player.one('loadedmetadata', () => {
+            // Chỉ seek nếu tập này thực sự có tiến trình cũ
             player.currentTime(saved)
             player.play()?.catch(() => { })
           })
@@ -483,16 +468,18 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
         currentSrcRef.current = newSrc
         progressKeyRef.current = progressKey
         player.src(options.sources)
+        
+        // Lấy tiến trình CỦA TẬP MỚI
         const savedOnChange = Math.max(initialTime ?? 0, progressKey ? getWatchProgress(progressKey) : 0)
-        if (savedOnChange > 0) {
-          player.one('loadedmetadata', () => {
-            player.currentTime(savedOnChange)
-            player.play()?.catch(() => { })
-          })
-        }
+        
+        player.one('loadedmetadata', () => {
+          // Luôn luôn seek về mốc thời gian của tập mới (kể cả là 0) để reset player
+          player.currentTime(savedOnChange)
+          player.play()?.catch(() => { })
+        })
       }
     }
-  }, [options, onReady])
+  }, [options, onReady, progressKey, initialTime])
 
   useEffect(() => {
     return () => {
