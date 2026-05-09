@@ -301,14 +301,16 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
               last.end = seg.end
               // Tìm lại seekTarget cho block đã kéo dài
               const nextNonAd = classified.find((s, j) => j > i && !s.isAd)
-              last.seekTarget = nextNonAd ? nextNonAd.start + 0.5 : seg.end + 1.0
+              // Không cộng thêm offset — nhảy đúng vào đầu segment phim thật
+              last.seekTarget = nextNonAd ? nextNonAd.start : seg.end
             } else {
               // Block mới — tìm segment phim thật đầu tiên sau block này
               const nextNonAd = classified.find((s, j) => j > i && !s.isAd)
               regions.push({
                 start: seg.start,
                 end: seg.end,
-                seekTarget: nextNonAd ? nextNonAd.start + 0.5 : seg.end + 1.0
+                // Không cộng thêm offset — nhảy đúng vào đầu segment phim thật
+                seekTarget: nextNonAd ? nextNonAd.start : seg.end
               })
             }
           }
@@ -339,17 +341,13 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
             }
             if (!isSeekingAd) {
               isSeekingAd = true
-              const { end: adBlockEnd, seekTarget } = upcoming
+              const { seekTarget } = upcoming
+              // Seek thẳng tới điểm bắt đầu phim, không double-seek
+              // Double-seek cũ (seekTarget + 1.0) là nguyên nhân mất segment phim đầu
               const safetyTimer = setTimeout(() => { isSeekingAd = false }, 3000)
               player.one('seeked', () => {
                 clearTimeout(safetyTimer)
-                const ct = player.currentTime() ?? 0
-                if (ct < adBlockEnd) {
-                  player.currentTime(seekTarget + 1.0)
-                  player.one('seeked', () => { isSeekingAd = false })
-                } else {
-                  isSeekingAd = false
-                }
+                isSeekingAd = false
               })
               player.currentTime(seekTarget)
             }
