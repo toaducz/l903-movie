@@ -4,6 +4,7 @@ import React, { useState, useEffect, useMemo } from 'react'
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
 import { getDetailMovie } from '@/api/kkphim/get-detail-movie'
+import { getDetailMovieOptions as getDetailMovieOphim } from '@/api/ophim/get-detail-movie'
 import { getSubtitles } from '@/api/proxy/get-subtitles'
 import EpisodeList from '@/component/interactive/episode-list'
 import SubtitleBadges from '@/component/interactive/subtitle-badges'
@@ -26,7 +27,10 @@ export default function WatchPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { user } = useAuth()
-  const { data, isLoading, isError } = useQuery(getDetailMovie({ slug: String(slug) }))
+  const source = searchParams.get('source') ?? 'kkphim'
+  const { data, isLoading, isError } = useQuery(
+    source === 'ophim' ? getDetailMovieOphim({ slug: String(slug) }) : getDetailMovie({ slug: String(slug) })
+  )
   const [selectedEpisode, setSelectedEpisode] = useState<string | null>(null)
   const [useBackup, setUseBackup] = useState<string | null>(null)
   const [useBackupPlayer, setUseBackupPlayer] = useState(false)
@@ -115,9 +119,10 @@ export default function WatchPage() {
     saveViewHistory({
       name: data?.movie?.name ?? '',
       image: data?.movie?.poster_url ?? '',
-      slug: data?.movie?.slug ?? ''
+      slug: data?.movie?.slug ?? '',
+      source: source
     })
-  }, [data])
+  }, [data, source])
 
   // Countdown auto-play tập tiếp theo
   useEffect(() => {
@@ -176,7 +181,8 @@ export default function WatchPage() {
         name: data?.movie?.name ?? '',
         image: data?.movie?.poster_url ?? '',
         slug: data?.movie?.slug ?? '',
-        episodeName: epName
+        episodeName: epName,
+        source: source
       }
       saveViewHistory(historyPayload)
       if (user) {
@@ -187,7 +193,8 @@ export default function WatchPage() {
             slug: historyPayload.slug,
             name: historyPayload.name,
             image: historyPayload.image,
-            episode_name: epName
+            episode_name: epName,
+            source
           })
         })
       }
@@ -272,7 +279,7 @@ export default function WatchPage() {
               </button>
 
               <div>
-                <FavoriteButton slug={movie?.slug} image={movie?.poster_url} name={movie.name} />
+                <FavoriteButton slug={movie?.slug} image={movie?.poster_url} name={movie.name} source={source} />
               </div>
 
               {/* Fast Info */}
@@ -435,12 +442,14 @@ export default function WatchPage() {
                                 image: movie.poster_url,
                                 episode_name: episodeToPlay.name,
                                 progress: time,
-                                duration
+                                duration,
+                                source
                               })
                             })
                           }
                         : undefined
                     }
+                    source={source}
                     options={{
                       autoplay: false,
                       controls: true,

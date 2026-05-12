@@ -14,6 +14,7 @@ type DbItem = {
   episode_name?: string
   progress: number
   duration: number
+  source: string
 }
 
 export default function ContinueWatchingSection() {
@@ -40,7 +41,7 @@ export default function ContinueWatchingSection() {
         })
         .map((d: DbItem) => {
           const percent = Math.min(Math.round((d.progress / d.duration) * 100), 99)
-          return { ...d, episodeName: d.episode_name, percent }
+          return { ...d, episodeName: d.episode_name, percent, source: d.source }
         })
       const merged = dbItems.length > 0 ? dbItems : getWatchingInProgress()
       return merged.slice(0, 20)
@@ -123,15 +124,19 @@ export default function ContinueWatchingSection() {
         <div ref={scrollRef} className='flex gap-4 overflow-x-auto pb-2 no-scrollbar'>
           {items.map((item, i) => (
             <Link
-              key={item.slug}
-              href={`/detail-movie/${item.slug}?watch=1&ep=${encodeURIComponent(item.episodeName ?? '')}&t=${Math.floor(item.progress)}`}
+              key={`${item.slug}_${item.source}`}
+              href={`/detail-movie/${item.slug}?watch=1&ep=${encodeURIComponent(item.episodeName ?? '')}&t=${Math.floor(
+                item.progress
+              )}${item.source ? `&source=${item.source}` : ''}`}
               className='flex-shrink-0 w-36 sm:w-44 group/card block'
               style={{
                 transform: i % 2 === 0 ? 'rotate(-1deg)' : 'rotate(1deg)',
-                transition: 'transform .2s',
+                transition: 'transform .2s'
               }}
               onMouseEnter={e => ((e.currentTarget as HTMLElement).style.transform = 'rotate(0deg) scale(1.04)')}
-              onMouseLeave={e => ((e.currentTarget as HTMLElement).style.transform = i % 2 === 0 ? 'rotate(-1deg)' : 'rotate(1deg)')}
+              onMouseLeave={e =>
+                ((e.currentTarget as HTMLElement).style.transform = i % 2 === 0 ? 'rotate(-1deg)' : 'rotate(1deg)')
+              }
             >
               {/* Art + progress */}
               <div className='relative rounded-xl overflow-hidden border border-white/10 bg-[var(--c-card)]'>
@@ -150,18 +155,37 @@ export default function ContinueWatchingSection() {
                 >
                   {item.percent}%
                 </span>
+                {/* Source badge */}
+                {item.source && (
+                  <span
+                    className='absolute top-2 left-2 text-[8px] font-black px-1.5 py-0.5 rounded-sm tracking-tighter uppercase opacity-80 z-10'
+                    style={{
+                      background:
+                        item.source === 'ophim' ? '#ff4d4f' : item.source === 'nguonc' ? '#52c41a' : '#1890ff',
+                      color: '#fff'
+                    }}
+                  >
+                    {item.source === 'nguonc' ? 'Nguồn C' : item.source}
+                  </span>
+                )}
                 {/* Progress bar */}
                 <div className='absolute bottom-0 left-0 right-0 h-1 bg-white/10'>
-                  <div
-                    className='h-full'
-                    style={{ width: `${item.percent}%`, background: 'var(--c-pink)' }}
-                  />
+                  <div className='h-full' style={{ width: `${item.percent}%`, background: 'var(--c-pink)' }} />
                 </div>
                 {/* Play hover */}
                 <div className='absolute inset-0 flex items-center justify-center opacity-0 group-hover/card:opacity-100 transition-opacity duration-200'>
                   <div className='bg-black/60 rounded-full p-2'>
-                    <svg xmlns='http://www.w3.org/2000/svg' className='h-8 w-8 text-white' viewBox='0 0 20 20' fill='currentColor'>
-                      <path fillRule='evenodd' d='M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z' clipRule='evenodd' />
+                    <svg
+                      xmlns='http://www.w3.org/2000/svg'
+                      className='h-8 w-8 text-white'
+                      viewBox='0 0 20 20'
+                      fill='currentColor'
+                    >
+                      <path
+                        fillRule='evenodd'
+                        d='M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z'
+                        clipRule='evenodd'
+                      />
                     </svg>
                   </div>
                 </div>

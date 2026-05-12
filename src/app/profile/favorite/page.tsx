@@ -8,6 +8,7 @@ type FavoriteMovie = {
   name: string
   slug: string
   image: string
+  source?: string
 }
 
 export default function FavoritePage() {
@@ -20,7 +21,8 @@ export default function FavoritePage() {
       return json.data.map((item: FavoriteMovie) => ({
         name: item.name,
         slug: item.slug,
-        image: item.image
+        image: item.image,
+        source: item.source
       }))
     }
   })
@@ -54,8 +56,14 @@ export default function FavoritePage() {
       {!error && favorites.length > 0 ? (
         <div className='grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4 content-start'>
           {favorites.map(movie => (
-            <div key={movie.slug} className='relative'>
-              <HistoryItem slug={movie.slug} name={movie.name} image={movie.image} hideEpisode={true} />
+            <div key={`${movie.slug}_${movie.source}`} className='relative'>
+              <HistoryItem
+                slug={movie.slug}
+                name={movie.name}
+                image={movie.image}
+                hideEpisode={true}
+                source={movie.source}
+              />
               <button
                 onClick={() => handleDelete(movie.slug)}
                 className='absolute top-2 right-2 w-6 h-6 flex items-center justify-center 

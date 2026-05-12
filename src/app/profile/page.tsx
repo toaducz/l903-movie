@@ -16,6 +16,7 @@ type FavoriteMovie = {
   image: string
   slug: string
   episode_name?: string
+  source?: string
 }
 
 type ReviewMovie = {
@@ -30,7 +31,9 @@ export default function ProfilePage() {
   const { logout, user } = useAuth()
   const [subSettings, setSubSettings] = useState<SubtitleSettings>(DEFAULT_SUBTITLE_SETTINGS)
 
-  useEffect(() => { setSubSettings(getSubtitleSettings()) }, [])
+  useEffect(() => {
+    setSubSettings(getSubtitleSettings())
+  }, [])
 
   const handleSubSettingsChange = (s: SubtitleSettings) => {
     setSubSettings(s)
@@ -69,7 +72,8 @@ export default function ProfilePage() {
     ? favoritesData.data.map((item: FavoriteMovie) => ({
         name: item.name,
         image: item.image,
-        slug: item.slug
+        slug: item.slug,
+        source: item.source
       }))
     : []
   const reviews: ReviewMovie[] = reviewsData?.data ?? []
@@ -85,13 +89,14 @@ export default function ProfilePage() {
         <h2 className='text-xl font-semibold mb-3'>Phim đã xem gần đây</h2>
         {history.length > 0 ? (
           <div className='grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4'>
-            {history.map(movie => (
+            {history.map((movie, index) => (
               <HistoryItem
-                key={movie.slug}
+                key={`${movie.slug}_${index}`}
                 slug={movie.slug}
                 name={movie.name}
                 image={movie.image}
                 episodeName={movie.episode_name}
+                source={movie.source}
               />
             ))}
           </div>
@@ -117,6 +122,7 @@ export default function ProfilePage() {
                 name={movie.name}
                 image={movie.image}
                 hideEpisode={true}
+                source={movie.source}
               />
             ))}
           </div>

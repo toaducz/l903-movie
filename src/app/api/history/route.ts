@@ -15,12 +15,22 @@ export async function POST(req: NextRequest) {
   const user_id = await getUserId(req)
   if (!user_id) return NextResponse.json({ error: 'Chưa đăng nhập' }, { status: 401 })
 
-  const { slug, name, image, episode_name, progress, duration } = await req.json()
+  const { slug, name, image, episode_name, progress, duration, source } = await req.json()
   if (!slug) return NextResponse.json({ error: 'Thiếu slug' }, { status: 400 })
 
   const { error } = await supabase.from('watch_history').upsert(
-    { user_id, slug, name, image, episode_name, progress: progress ?? 0, duration: duration ?? 0, updated_at: new Date().toISOString() },
-    { onConflict: 'user_id,slug' }
+    { 
+      user_id, 
+      slug, 
+      name, 
+      image, 
+      episode_name, 
+      progress: progress ?? 0, 
+      duration: duration ?? 0, 
+      source: source ?? 'kkphim',
+      updated_at: new Date().toISOString() 
+    },
+    { onConflict: 'user_id,slug,source' }
   )
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
@@ -35,7 +45,7 @@ export async function GET(req: NextRequest) {
 
   const { data, error } = await supabase
     .from('watch_history')
-    .select('slug, name, image, episode_name, progress, duration, updated_at')
+    .select('slug, name, image, episode_name, progress, duration, source, updated_at')
     .eq('user_id', user_id)
     .order('updated_at', { ascending: false })
     .limit(100)

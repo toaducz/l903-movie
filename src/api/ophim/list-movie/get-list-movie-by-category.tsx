@@ -1,11 +1,13 @@
-import { Movie } from './get-update-movie'
+// import { Movie } from '@/api/kkphim/get-update-movie'
+// import { Pagination } from '@/api/pagination'
 import { request } from '@/utils/request'
 import { queryOptions } from '@tanstack/react-query'
-import { Pagination } from '../pagination'
-import { kkphim } from '@/utils/env'
+import { ophim } from '@/utils/env'
+import { mapOphimUpdateItemToMovie, mapOphimUpdatePagination } from '@/utils/mapping'
+import { OphimUpdateItem } from '../get-update-movie'
 
 type Param = {
-  type_slug: string
+  category: string
   keyword: string
   filterCategory: string[]
   filterCountry: string[]
@@ -13,7 +15,12 @@ type Param = {
   filterType: string[]
   sortField: string
   sortType: string
-  pagination: Pagination
+  pagination: {
+    totalItems: number
+    totalItemsPerPage: number
+    currentPage: number
+    totalPages: number
+  }
 }
 
 type SeoOnPage = {
@@ -34,20 +41,19 @@ export type SearchResult = {
   seoOnPage: SeoOnPage
   breadCrumb: BreadCrumbItem[]
   titlePage: string
-  items: Movie[]
+  items: OphimUpdateItem[]
   params: Param
   type_list: string
   APP_DOMAIN_FRONTEND: string
   APP_DOMAIN_CDN_IMAGE: string
 }
 
-type ListMovieRequest = {
-  typelist: string
+type ListMovieByCategoryRequest = {
+  category: string
   page: number
   sort_field?: string
   sort_type?: string
   sort_lang?: string
-  category?: string
   country?: string
   year?: string
   limit?: number
@@ -59,17 +65,16 @@ type ListMovieResponse = {
   status: string
 }
 
-export const getListMovie = ({
-  typelist,
+export const getListMovieByCategory = ({
+  category,
   page = 1,
   sort_field,
   sort_type,
   sort_lang,
-  category,
   country,
   year,
   limit = 12
-}: ListMovieRequest) => {
+}: ListMovieByCategoryRequest) => {
   const params: Record<string, unknown> = {
     page,
     ...(sort_field && { sort_field }),
@@ -82,12 +87,14 @@ export const getListMovie = ({
   }
 
   return queryOptions({
-    queryKey: ['get-list-movie', typelist, page, limit, year, sort_type, category, country],
+    queryKey: ['ophim', 'list-movie-by-category', category, page, limit, year, sort_type, country],
     queryFn: async () => {
-      const res = await request<ListMovieResponse>(kkphim, `v1/api/danh-sach/${typelist}`, 'GET', params)
+      const response = await request<ListMovieResponse>(ophim, `the-loai/${category}`, 'GET', params)
+      if (!response) throw new Error('Failed to fetch movie list')
+
       return {
-        ...res,
-        cdnImageDomain: res?.data?.APP_DOMAIN_CDN_IMAGE
+        items: response.data.items.map(item => mapOphimUpdateItemToMovie(item, response.data.APP_DOMAIN_CDN_IMAGE)),
+        pagination: mapOphimUpdatePagination(response.data.params.pagination)
       }
     }
   })

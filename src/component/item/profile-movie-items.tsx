@@ -9,12 +9,13 @@ type HistoryItemProps = {
   image: string
   episodeName?: string
   hideEpisode?: boolean
+  source?: string
 }
 
-export default function HistoryItem({ slug, name, image, episodeName, hideEpisode }: HistoryItemProps) {
+export default function HistoryItem({ slug, name, image, episodeName, hideEpisode, source }: HistoryItemProps) {
   const href = episodeName
-    ? `/detail-movie/${slug}?watch=1&ep=${encodeURIComponent(episodeName)}`
-    : `/detail-movie/${slug}`
+    ? `/detail-movie/${slug}?watch=1&ep=${encodeURIComponent(episodeName)}${source ? `&source=${source}` : ''}`
+    : `/detail-movie/${slug}${source ? `?source=${source}` : ''}`
 
   return (
     <Link
@@ -23,6 +24,17 @@ export default function HistoryItem({ slug, name, image, episodeName, hideEpisod
     >
       <div className='relative w-full h-48 bg-gray-200'>
         <Image src={image} alt={name} unoptimized className='object-cover' fill />
+        {source && (
+          <span
+            className='absolute top-1 left-1 text-[8px] font-black px-1.5 py-0.5 rounded-sm tracking-tighter uppercase opacity-80 z-10'
+            style={{
+              background: source === 'ophim' ? '#ff4d4f' : source === 'nguonc' ? '#52c41a' : '#1890ff',
+              color: '#fff'
+            }}
+          >
+            {source === 'nguonc' ? 'Nguồn C' : source}
+          </span>
+        )}
       </div>
       <div className='p-2'>
         <h3 className='text-sm font-medium line-clamp-1 overflow-hidden'>{name}</h3>

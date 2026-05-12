@@ -3,6 +3,7 @@ type Movie = {
   image: string
   slug: string
   episodeName?: string
+  source?: string
 }
 
 export type WatchingItem = Movie & {

@@ -58,7 +58,7 @@ export default function MovieListPage({
         <div className='grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-6 sm:gap-5 gap-3 p-3 w-full'>
           {listMovie?.data?.items.map((movie: Movie) => (
             <div key={movie._id}>
-              <MovieItem movie={movie} />
+              <MovieItem movie={movie} cdnDomain={listMovie?.data?.APP_DOMAIN_CDN_IMAGE} />
             </div>
           ))}
         </div>

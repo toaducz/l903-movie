@@ -37,9 +37,10 @@ interface VideoPlayerProps {
   progressKey?: string
   initialTime?: number
   onEnded?: () => void
-  onProgress?: (time: number, duration: number) => void
+  onProgress?: (time: number, duration: number, source?: string) => void
   subtitles1?: SubtitleCue[]
   subtitles2?: SubtitleCue[]
+  source?: string
 }
 
 export const VideoPlayer: React.FC<VideoPlayerProps> = ({
@@ -50,7 +51,8 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
   onEnded,
   onProgress,
   subtitles1,
-  subtitles2
+  subtitles2,
+  source
 }) => {
   const videoRef = useRef<HTMLDivElement>(null)
   const playerRef = useRef<Player | null>(null)
@@ -78,7 +80,9 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
   const [subSettings, setSubSettings] = useState<SubtitleSettings>(DEFAULT_SUBTITLE_SETTINGS)
 
   // Load settings từ localStorage khi mount
-  useEffect(() => { setSubSettings(getSubtitleSettings()) }, [])
+  useEffect(() => {
+    setSubSettings(getSubtitleSettings())
+  }, [])
 
   useEffect(() => {
     progressKeyRef.current = progressKey
@@ -87,8 +91,12 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
   }, [progressKey, onProgress, onEnded])
 
   // Sync subtitle arrays vào ref khi props thay đổi
-  useEffect(() => { subtitles1Ref.current = subtitles1 ?? [] }, [subtitles1])
-  useEffect(() => { subtitles2Ref.current = subtitles2 ?? [] }, [subtitles2])
+  useEffect(() => {
+    subtitles1Ref.current = subtitles1 ?? []
+  }, [subtitles1])
+  useEffect(() => {
+    subtitles2Ref.current = subtitles2 ?? []
+  }, [subtitles2])
 
   const [seekHint, setSeekHint] = useState<{ side: 'left' | 'right'; key: number } | null>(null)
   const lastTapRef = useRef<{ time: number; side: 'left' | 'right' } | null>(null)
@@ -178,13 +186,13 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
             }
             const videoEl = player.el()?.querySelector('video') as
               | (HTMLVideoElement & {
-                requestPictureInPicture?: () => Promise<void>
-              })
+                  requestPictureInPicture?: () => Promise<void>
+                })
               | null
             if (doc.pictureInPictureElement) {
               doc.exitPictureInPicture?.()
             } else if (videoEl?.requestPictureInPicture) {
-              videoEl.requestPictureInPicture().catch(() => { })
+              videoEl.requestPictureInPicture().catch(() => {})
             }
           } else if (e.key === '[') {
             const rates = [0.5, 0.75, 1, 1.25, 1.5, 2]
@@ -244,7 +252,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
                 const orientation = window.screen.orientation as ScreenOrientation & {
                   lock: (type: string) => Promise<void>
                 }
-                orientation.lock('landscape').catch(() => { })
+                orientation.lock('landscape').catch(() => {})
               }
             } catch (error) {
               console.warn('Không thể khóa màn hình ngang:', error)
@@ -264,6 +272,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
 
         let adRegions: Array<{ start: number; end: number; skipped?: boolean }> = []
         let mutedByAd = false
+        let isSkippingAd = false
         let adRafId: number | null = null
 
         const calculateAdRegions = () => {
@@ -317,12 +326,8 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
           if (adRegions.length === 0) return
           const currentTime = player.currentTime() ?? 0
 
-          const PRE_MUTE = 0.2 // giới hạn kĩ thuật nên phải pre muted 0.2
-          const DRIFT_TOLERANCE = 0.8 // bù trôi dạt do manifest rounding (~0.003s × N segments)
-          const upcoming = adRegions.find(r =>
-            currentTime >= r.start - PRE_MUTE - DRIFT_TOLERANCE &&
-            currentTime < r.end + DRIFT_TOLERANCE
-          )
+          const PRE_MUTE = 0.2 // Chỉ cần pre-mute 0.2s
+          const upcoming = adRegions.find(r => currentTime >= r.start - PRE_MUTE && currentTime < r.end)
 
           if (upcoming) {
             if (!mutedByAd) {
@@ -331,43 +336,70 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
               player.muted(true)
               mutedByAd = true
             }
-            if (currentTime >= upcoming.start - DRIFT_TOLERANCE && currentTime < upcoming.end + DRIFT_TOLERANCE) {
-              // 2. Ép tua đi — overshoot 0.5s để không rơi lại đúng biên
-              player.currentTime(upcoming.end + 0.5)
+
+            // 2. Ép tua đi (CHỈ 1 LẦN NHỜ CỜ KHÓA)
+            if (!isSkippingAd) {
+              isSkippingAd = true
+              player.currentTime(upcoming.end + 0.2)
             }
-          } else if (mutedByAd) {
-            // 3. KHI ĐÃ TUA QUA KHỎI VÙNG QUẢNG CÁO
-            // Dùng setTimeout 150ms để đợi video js load xong frame phim thật rồi mới mở rèm lên
-            setTimeout(() => {
-              if (blackScreenRef.current) blackScreenRef.current.style.opacity = '0'
-              player.muted(false)
-              mutedByAd = false
-            }, 150)
+          } else {
+            if (mutedByAd) {
+              // 3. KHI ĐÃ TUA QUA KHỎI VÙNG QUẢNG CÁO VÀ TẢI XONG PHIM
+              if (!player.seeking()) {
+                setTimeout(() => {
+                  if (blackScreenRef.current) blackScreenRef.current.style.opacity = '0'
+                  player.muted(false)
+                  mutedByAd = false
+                  isSkippingAd = false
+                }, 150)
+              }
+            }
           }
 
           // ── Subtitle sync (60fps, binary search O(log n)) ──────────────────
           if (!showSubRef.current) {
-            if (activeSub1Ref.current !== null) { activeSub1Ref.current = null; setActiveSub1(null) }
-            if (activeSub2Ref.current !== null) { activeSub2Ref.current = null; setActiveSub2(null) }
+            if (activeSub1Ref.current !== null) {
+              activeSub1Ref.current = null
+              setActiveSub1(null)
+            }
+            if (activeSub2Ref.current !== null) {
+              activeSub2Ref.current = null
+              setActiveSub2(null)
+            }
           } else {
             let adTimePassed = 0
             let inAd = false
             for (const region of adRegions) {
-              if (currentTime >= region.end + DRIFT_TOLERANCE) {
+              if (currentTime >= region.end) {
                 adTimePassed += region.end - region.start
-              } else if (currentTime >= region.start - DRIFT_TOLERANCE && currentTime < region.end + DRIFT_TOLERANCE) {
-                inAd = true; break
-              } else { break }
+              } else if (currentTime >= region.start - PRE_MUTE && currentTime < region.end) {
+                inAd = true
+                break
+              } else {
+                break
+              }
             }
             if (inAd) {
-              if (activeSub1Ref.current !== null) { activeSub1Ref.current = null; setActiveSub1(null) }
-              if (activeSub2Ref.current !== null) { activeSub2Ref.current = null; setActiveSub2(null) }
+              if (activeSub1Ref.current !== null) {
+                activeSub1Ref.current = null
+                setActiveSub1(null)
+              }
+              if (activeSub2Ref.current !== null) {
+                activeSub2Ref.current = null
+                setActiveSub2(null)
+              }
             } else {
               const realTime = currentTime - adTimePassed + subOffsetRef.current
               const cue1 = findActiveSub(subtitles1Ref.current, realTime)
-              if (cue1 !== activeSub1Ref.current) { activeSub1Ref.current = cue1; setActiveSub1(cue1) }
+              if (cue1 !== activeSub1Ref.current) {
+                activeSub1Ref.current = cue1
+                setActiveSub1(cue1)
+              }
               const cue2 = findActiveSub(subtitles2Ref.current, realTime)
-              if (cue2 !== activeSub2Ref.current) { activeSub2Ref.current = cue2; setActiveSub2(cue2) }
+              if (cue2 !== activeSub2Ref.current) {
+                activeSub2Ref.current = cue2
+                setActiveSub2(cue2)
+              }
             }
           }
         }
@@ -387,7 +419,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
           player.one('loadedmetadata', () => {
             // Chỉ seek nếu tập này thực sự có tiến trình cũ
             player.currentTime(saved)
-            player.play()?.catch(() => { })
+            player.play()?.catch(() => {})
           })
         }
 
@@ -402,7 +434,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
           const dur = player.duration() ?? 0
           if (dur > 0) {
             saveWatchDuration(key, dur)
-            onProgressRef.current?.(current, dur)
+            onProgressRef.current?.(current, dur, source)
           }
           lastSaved = current
         }
@@ -415,11 +447,6 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
             handleSaveProgress()
           }
         })
-
-        // tua cái là lưu luôn ??
-        // player.on('seeked', () => {
-        //   handleSaveProgress()
-        // })
 
         // Xóa khi xem xong + callback cho parent
         player.on('ended', () => {
@@ -468,14 +495,14 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
         currentSrcRef.current = newSrc
         progressKeyRef.current = progressKey
         player.src(options.sources)
-        
+
         // Lấy tiến trình CỦA TẬP MỚI
         const savedOnChange = Math.max(initialTime ?? 0, progressKey ? getWatchProgress(progressKey) : 0)
-        
+
         player.one('loadedmetadata', () => {
           // Luôn luôn seek về mốc thời gian của tập mới (kể cả là 0) để reset player
           player.currentTime(savedOnChange)
-          player.play()?.catch(() => { })
+          player.play()?.catch(() => {})
         })
       }
     }
@@ -506,8 +533,9 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
       {seekHint && (
         <div
           key={seekHint.key}
-          className={`pointer-events-none absolute top-1/2 -translate-y-1/2 flex flex-col items-center gap-1 text-white animate-seek-hint ${seekHint.side === 'left' ? 'left-6' : 'right-6'
-            }`}
+          className={`pointer-events-none absolute top-1/2 -translate-y-1/2 flex flex-col items-center gap-1 text-white animate-seek-hint ${
+            seekHint.side === 'left' ? 'left-6' : 'right-6'
+          }`}
         >
           <div className='rounded-full bg-white/20 p-4 text-2xl'>{seekHint.side === 'left' ? '«' : '»'}</div>
           <span className='text-sm font-semibold drop-shadow'>{seekHint.side === 'right' ? '+10s' : '-10s'}</span>
@@ -551,14 +579,18 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
       {subOffset !== 0 && (
         <div className='pointer-events-none absolute top-2 right-2 z-50'>
           <span className='text-xs bg-black/70 text-white rounded px-2 py-1 font-mono'>
-            Sub {subOffset > 0 ? '+' : ''}{subOffset}s
+            Sub {subOffset > 0 ? '+' : ''}
+            {subOffset}s
           </span>
         </div>
       )}
 
       {/* Help button & panel */}
       <button
-        onClick={() => { setShowHelp(v => !v); setShowSettings(false) }}
+        onClick={() => {
+          setShowHelp(v => !v)
+          setShowSettings(false)
+        }}
         className='absolute top-2 left-2 z-50 w-6 h-6 rounded-full bg-black/50 text-white text-xs flex items-center justify-center hover:bg-black/80 transition-opacity opacity-30 hover:opacity-100'
         title='Hướng dẫn phím tắt'
       >
@@ -567,7 +599,10 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
 
       {/* Settings button */}
       <button
-        onClick={() => { setShowSettings(v => !v); setShowHelp(false) }}
+        onClick={() => {
+          setShowSettings(v => !v)
+          setShowHelp(false)
+        }}
         className='absolute top-2 left-9 z-50 w-6 h-6 rounded-full bg-black/50 text-white text-xs flex items-center justify-center hover:bg-black/80 transition-opacity opacity-30 hover:opacity-100'
         title='Cài đặt phụ đề'
       >
@@ -578,12 +613,12 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
       {(showHelp || showSettings) && (
         <div
           className='absolute inset-0 z-40 cursor-default'
-          onClick={(e) => {
+          onClick={e => {
             e.stopPropagation()
             setShowHelp(false)
             setShowSettings(false)
           }}
-          onTouchEnd={(e) => {
+          onTouchEnd={e => {
             e.stopPropagation()
             setShowHelp(false)
             setShowSettings(false)
@@ -595,16 +630,26 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
         <div className='absolute top-9 left-2 z-50 bg-black/85 text-white rounded-lg p-3 text-xs space-y-1 min-w-[220px] backdrop-blur-sm'>
           <p className='font-semibold text-gray-300 mb-2'>⌨ Phím tắt</p>
           <div className='grid grid-cols-[auto_1fr] gap-x-3 gap-y-1'>
-            <kbd className='font-mono bg-white/10 rounded px-1'>Space</kbd><span>Tạm dừng / Phát</span>
-            <kbd className='font-mono bg-white/10 rounded px-1'>← →</kbd><span>Tua ±10 giây</span>
-            <kbd className='font-mono bg-white/10 rounded px-1'>↑ ↓</kbd><span>Âm lượng ±10%</span>
-            <kbd className='font-mono bg-white/10 rounded px-1'>0–9</kbd><span>Nhảy đến % thời gian</span>
-            <kbd className='font-mono bg-white/10 rounded px-1'>[ ]</kbd><span>Tốc độ phát</span>
-            <kbd className='font-mono bg-white/10 rounded px-1'>M</kbd><span>Tắt / Bật tiếng</span>
-            <kbd className='font-mono bg-white/10 rounded px-1'>F</kbd><span>Toàn màn hình</span>
-            <kbd className='font-mono bg-white/10 rounded px-1'>T</kbd><span>Picture-in-Picture</span>
-            <kbd className='font-mono bg-white/10 rounded px-1'>C</kbd><span>Ẩn / Hiện phụ đề</span>
-            <kbd className='font-mono bg-white/10 rounded px-1'>Z / X</kbd><span>Phụ đề sớm / trễ 0.5s</span>
+            <kbd className='font-mono bg-white/10 rounded px-1'>Space</kbd>
+            <span>Tạm dừng / Phát</span>
+            <kbd className='font-mono bg-white/10 rounded px-1'>← →</kbd>
+            <span>Tua ±10 giây</span>
+            <kbd className='font-mono bg-white/10 rounded px-1'>↑ ↓</kbd>
+            <span>Âm lượng ±10%</span>
+            <kbd className='font-mono bg-white/10 rounded px-1'>0–9</kbd>
+            <span>Nhảy đến % thời gian</span>
+            <kbd className='font-mono bg-white/10 rounded px-1'>[ ]</kbd>
+            <span>Tốc độ phát</span>
+            <kbd className='font-mono bg-white/10 rounded px-1'>M</kbd>
+            <span>Tắt / Bật tiếng</span>
+            <kbd className='font-mono bg-white/10 rounded px-1'>F</kbd>
+            <span>Toàn màn hình</span>
+            <kbd className='font-mono bg-white/10 rounded px-1'>T</kbd>
+            <span>Picture-in-Picture</span>
+            <kbd className='font-mono bg-white/10 rounded px-1'>C</kbd>
+            <span>Ẩn / Hiện phụ đề</span>
+            <kbd className='font-mono bg-white/10 rounded px-1'>Z / X</kbd>
+            <span>Phụ đề sớm / trễ 0.5s</span>
           </div>
         </div>
       )}

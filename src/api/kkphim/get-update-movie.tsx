@@ -44,6 +44,7 @@ export type Movie = {
 
 type LatestUpdateMovieList = {
   status: string
+  APP_DOMAIN_CDN_IMAGE: string
   items: Movie[]
   pagination: Pagination
 }
