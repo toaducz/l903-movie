@@ -53,7 +53,8 @@ type ListMovieRequest = {
   limit?: number
 }
 
-type ListMovieResponse = {
+export type ListMovieResponse = {
+  cdnImageDomain?: string
   data: SearchResult
   msg: string
   status: string
@@ -83,12 +84,12 @@ export const getListMovie = ({
 
   return queryOptions({
     queryKey: ['get-list-movie', typelist, page, limit, year, sort_type, category, country],
-    queryFn: async () => {
+    queryFn: async (): Promise<ListMovieResponse> => {
       const res = await request<ListMovieResponse>(kkphim, `v1/api/danh-sach/${typelist}`, 'GET', params)
       return {
         ...res,
         cdnImageDomain: res?.data?.APP_DOMAIN_CDN_IMAGE
-      }
+      } as ListMovieResponse
     }
   })
 }

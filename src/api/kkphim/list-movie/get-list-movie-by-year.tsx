@@ -53,6 +53,7 @@ type ListMovieByYearRequest = {
 }
 
 export type ListMovieResponse = {
+  cdnImageDomain?: string
   data: SearchResult
   msg: string
   status: string
