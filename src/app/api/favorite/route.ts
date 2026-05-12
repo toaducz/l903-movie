@@ -30,14 +30,14 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Không xác thực được' }, { status: 401 })
   }
 
-  const { slug, name, image } = await req.json()
+  const { slug, name, image, source } = await req.json()
   if (!slug) {
     return NextResponse.json({ error: 'Thiếu slug' }, { status: 400 })
   }
 
   const { data, error } = await supabase
     .from('favorite')
-    .insert([{ user_id: user_id, slug: slug, name: name, image: image }])
+    .insert([{ user_id: user_id, slug: slug, name: name, image: image, source: source ?? 'kkphim' }])
 
   if (error) {
     console.error('Lỗi Supabase:', error)

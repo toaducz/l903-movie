@@ -75,7 +75,7 @@ export default function AllMoviePage({ page }: Readonly<Props>) {
         <div className='grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-6 sm:gap-5 gap-3 p-3 w-full'>
           {listMovie?.items.map(movie => (
             <div key={movie._id}>
-              <MovieItem movie={movie} />
+              <MovieItem movie={movie} cdnDomain={listMovie.APP_DOMAIN_CDN_IMAGE} />
             </div>
           ))}
         </div>

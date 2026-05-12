@@ -4,22 +4,39 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { Movie } from '@/api/kkphim/get-update-movie'
 import React, { useState } from 'react'
+import { getOphimImageMovie } from '@/utils/common'
 
 type Props = {
   movie: Movie
   color?: string
   source?: string
   index?: number
+  cdnDomain?: string
 }
 
-export default function MovieItem({ movie, color, source, index }: Readonly<Props>) {
+export default function MovieItem({ movie, color, source, index, cdnDomain }: Readonly<Props>) {
   const [isLoaded, setIsLoaded] = useState(false)
 
-  const normalizePosterUrl = (posterUrl: string | object | null | undefined) => {
-    if (!posterUrl || typeof posterUrl === 'object') return null
-    const temp = String(posterUrl).trim()
+  const normalizePosterUrl = (url: string | object | null | undefined) => {
+    if (!url || typeof url === 'object') return null
+    const temp = String(url).trim()
     if (temp === '{}' || temp === '') return null
-    return temp.startsWith('http') ? temp : `https://phimimg.com/${temp.replace(/^\/+/, '')}`
+
+    // If it's already a full URL, return it (e.g. processed by mapping or returned by API)
+    if (temp.startsWith('http')) return temp
+
+    const cleanPath = temp.replace(/^\/+/, '')
+
+    // Handle relative paths based on source (as fallback)
+    switch (source) {
+      case 'ophim':
+        return getOphimImageMovie(cdnDomain ?? '', url)
+      case 'nguonc':
+        return `https://phim.nguonc.com/uploads/movies/${cleanPath}`
+      default:
+        // Default to KKPhim domain
+        return `${cdnDomain}/${cleanPath}`
+    }
   }
 
   const poster = normalizePosterUrl(movie.poster_url)
@@ -38,7 +55,13 @@ export default function MovieItem({ movie, color, source, index }: Readonly<Prop
 
   return (
     <Link
-      href={source ? `/${source}/detail-movie/${movie.slug}` : `/detail-movie/${movie.slug}`}
+      href={
+        source === 'nguonc'
+          ? `/nguonc/detail-movie/${movie.slug}`
+          : source
+            ? `/detail-movie/${movie.slug}?source=${source}`
+            : `/detail-movie/${movie.slug}`
+      }
       className='group block'
       style={{ '--accent': accent } as React.CSSProperties}
     >
@@ -47,12 +70,8 @@ export default function MovieItem({ movie, color, source, index }: Readonly<Prop
         className='relative rounded-2xl overflow-hidden border border-white/10 transition-all duration-200
                    group-hover:-translate-x-0.5 group-hover:-translate-y-0.5'
         style={{ boxShadow: '5px 5px 0 transparent', transition: 'box-shadow .2s, transform .2s' }}
-        onMouseEnter={e =>
-          ((e.currentTarget as HTMLDivElement).style.boxShadow = `7px 7px 0 ${accent}`)
-        }
-        onMouseLeave={e =>
-          ((e.currentTarget as HTMLDivElement).style.boxShadow = `5px 5px 0 transparent`)
-        }
+        onMouseEnter={e => ((e.currentTarget as HTMLDivElement).style.boxShadow = `7px 7px 0 ${accent}`)}
+        onMouseLeave={e => ((e.currentTarget as HTMLDivElement).style.boxShadow = `5px 5px 0 transparent`)}
       >
         {/* Aspect ratio 2:3 */}
         <div className='relative aspect-[2/3] overflow-hidden bg-[var(--c-card)]'>
@@ -67,7 +86,9 @@ export default function MovieItem({ movie, color, source, index }: Readonly<Prop
             loading={isPriority ? undefined : 'lazy'}
             priority={isPriority}
             onLoad={() => setIsLoaded(true)}
-            className={`object-cover transition-all duration-500 group-hover:scale-105 ${isLoaded ? 'opacity-100' : 'opacity-0'}`}
+            className={`object-cover transition-all duration-500 group-hover:scale-105 ${
+              isLoaded ? 'opacity-100' : 'opacity-0'
+            }`}
             unoptimized
           />
 
@@ -107,6 +128,19 @@ export default function MovieItem({ movie, color, source, index }: Readonly<Prop
           {movie.lang && (
             <span className='absolute bottom-2 left-2 text-[9px] px-1.5 py-0.5 rounded bg-black/50 text-white/60 backdrop-blur-sm'>
               {movie.lang}
+            </span>
+          )}
+
+          {/* Source badge — bottom right */}
+          {source && (
+            <span
+              className='absolute bottom-2 right-2 text-[8px] font-black px-1.5 py-0.5 rounded-sm tracking-tighter uppercase opacity-80'
+              style={{
+                background: source === 'ophim' ? '#ff4d4f' : source === 'nguonc' ? '#52c41a' : '#1890ff',
+                color: '#fff'
+              }}
+            >
+              {source === 'nguonc' ? 'Nguồn C' : source}
             </span>
           )}
         </div>

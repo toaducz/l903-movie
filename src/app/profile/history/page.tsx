@@ -7,7 +7,7 @@ import { useAuth } from '@/app/auth-provider'
 import { useQuery } from '@tanstack/react-query'
 import Loading from '@/component/status/loading'
 
-type HistoryMovie = { name: string; slug: string; image: string; episode_name?: string }
+type HistoryMovie = { name: string; slug: string; image: string; episode_name?: string; source?: string }
 
 export default function HistoryPage() {
   const { user } = useAuth()
@@ -22,7 +22,11 @@ export default function HistoryPage() {
       if (res.status === 401) return getViewHistory()
       const json = await res.json()
       return (json.data ?? []).map((d: HistoryMovie) => ({
-        name: d.name, slug: d.slug, image: d.image, episode_name: d.episode_name
+        name: d.name,
+        slug: d.slug,
+        image: d.image,
+        episode_name: d.episode_name,
+        source: d.source
       }))
     }
   })
@@ -62,7 +66,14 @@ export default function HistoryPage() {
       {visibleMovies.length > 0 ? (
         <div className='grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4 content-start'>
           {visibleMovies.map((movie: HistoryMovie) => (
-            <HistoryItem key={movie.slug} slug={movie.slug} name={movie.name} image={movie.image} episodeName={movie.episode_name} />
+            <HistoryItem
+              key={`${movie.slug}_${movie.source}`}
+              slug={movie.slug}
+              name={movie.name}
+              image={movie.image}
+              episodeName={movie.episode_name}
+              source={movie.source}
+            />
           ))}
         </div>
       ) : (

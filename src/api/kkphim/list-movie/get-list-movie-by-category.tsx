@@ -81,6 +81,12 @@ export const getListMovieByCategory = ({
 
   return queryOptions({
     queryKey: ['get-list-movie-by-category', category, page, limit, year, sort_type, country],
-    queryFn: () => request<ListMovieResponse>(kkphim, `v1/api/the-loai/${category}`, 'GET', params)
+    queryFn: async () => {
+      const res = await request<ListMovieResponse>(kkphim, `v1/api/the-loai/${category}`, 'GET', params)
+      return {
+        ...res,
+        cdnImageDomain: res?.data?.APP_DOMAIN_CDN_IMAGE
+      }
+    }
   })
 }

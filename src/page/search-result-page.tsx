@@ -1,11 +1,11 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useRouter } from 'next/navigation'
 // import { useMemo } from 'react'
 import MovieItem from '@/component/item/movie-item'
-import { getSearchByName } from '@/api/kkphim/search/get-search'
+import { getSearchCombined, CombinedMovie } from '@/api/combined-search'
 import Pagination from '@/component/interactive/pagination'
 import Loading from '@/component/status/loading'
 import Error from '@/component/status/error'
@@ -37,12 +37,13 @@ export default function SearchResultPage({
 }: Readonly<SearchProps>) {
   const router = useRouter()
   const pageSearch = page ?? 1
+  const [showAll, setShowAll] = useState(false)
   const {
     data: result,
     isLoading,
     isError
   } = useQuery(
-    getSearchByName({
+    getSearchCombined({
       keyword,
       page: pageSearch,
       category,
@@ -71,8 +72,6 @@ export default function SearchResultPage({
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }, [page])
 
-  // console.log(result?.data.params.pagination)
-
   if (isLoading) {
     return <Loading />
   }
@@ -86,13 +85,11 @@ export default function SearchResultPage({
   }
 
   return (
-    <div className='min-h-screen flex flex-col items-center justify-center p-4 bg-slate-900'>
-      <div className={`flex flex-col ${headTitle ? 'pt-5' : 'pt-20'} items-center justify-content`}>
-        <h2 className='text-2xl font-semibold text-gray-100'>{result?.data?.titlePage}</h2>
-        <h6 className='font-semibold text-gray-100 mb-6 italic'>
-          Có {result?.data?.params.pagination.totalItems} kết quả
-        </h6>
-        {result?.data?.params?.pagination?.totalItems === 0 ? (
+    <div className='min-h-screen flex flex-col items-center justify-start pt-10 pb-20 px-4 bg-slate-900'>
+      <div className='w-full max-w-7xl flex flex-col items-center'>
+        <div className={`flex flex-col ${headTitle ? 'pt-5' : 'pt-10'} items-center w-full`}>
+          <h6 className='font-semibold text-gray-100 mb-6 italic'>Có {result?.pagination.totalItems} kết quả</h6>
+        {result?.pagination?.totalItems === 0 ? (
           <div className='flex flex-col items-center justify-center gap-4'>
             <Image
               unoptimized
@@ -111,23 +108,30 @@ export default function SearchResultPage({
             </Link>
           </div>
         ) : (
-          <div></div>
+          result?.hasDuplicates && (
+            <button
+              onClick={() => setShowAll(!showAll)}
+              className='mb-4 text-xs font-bold text-blue-400 hover:text-blue-300 transition-colors uppercase tracking-widest cursor-pointer'
+            >
+              {showAll ? 'Ẩn kết quả trùng' : 'Hiện tất cả kết quả (bao gồm trùng lặp)'}
+            </button>
+          )
         )}
       </div>
-      <div className='flex justify-center items-center '>
-        <div className='grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-6 sm:gap-5 gap-3 p-3 w-full'>
-          {result?.data?.items?.map(movie => (
-            <div key={movie._id}>
-              <MovieItem movie={movie} />
-            </div>
-          ))}
-        </div>
+      <div className='grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-5 p-3 w-full'>
+        {(showAll ? result?.allItems : result?.items)?.map((movie: CombinedMovie) => (
+          <div key={`${movie._id}_${movie.source}`}>
+            <MovieItem movie={movie} cdnDomain={result?.APP_DOMAIN_CDN_IMAGE} source={movie.source} />
+          </div>
+        ))}
       </div>
+
       <Pagination
-        currentPage={result?.data.params.pagination.currentPage ?? 1}
-        totalPages={result?.data.params.pagination.totalPages ?? 1}
+        currentPage={result?.pagination.currentPage ?? 1}
+        totalPages={result?.pagination.totalPages ?? 1}
         onPageChange={handlePageChange}
       />
     </div>
+  </div>
   )
 }
