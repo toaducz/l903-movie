@@ -7,6 +7,7 @@ import { getListMovie } from '@/api/kkphim/get-list-movie'
 import MovieListPage from '@/page/movie-list-page'
 import Loading from '@/component/status/loading'
 import Error from '@/component/status/error'
+import { ListMovieResponse } from '@/api/kkphim/get-list-movie'
 
 export default function MoviePage() {
   return (
@@ -18,9 +19,9 @@ export default function MoviePage() {
 
 function MovieListPageContent() {
   const searchParams = useSearchParams()
-  const query = searchParams?.get('typelist')?.trim()
+  const query = searchParams.get('typelist')?.trim()
   const pageParam = Number(searchParams.get('page') ?? '1')
-  const country = searchParams?.get('country')?.trim()
+  const country = searchParams.get('country')?.trim()
   const router = useRouter()
 
   if (!query) {
@@ -35,7 +36,7 @@ function MovieListPageContent() {
     isError
   } = useQuery(
     getListMovie({
-      typelist: query!,
+      typelist: query,
       page: pageParam,
       country
     })
@@ -43,7 +44,7 @@ function MovieListPageContent() {
 
   const handlePageChange = (newPage: number) => {
     const params = new URLSearchParams({
-      typelist: query!,
+      typelist: query,
       page: String(newPage)
     })
     if (country) params.set('country', country)
@@ -57,5 +58,11 @@ function MovieListPageContent() {
   if (isLoading) return <Loading />
   if (isError) return <Error />
 
-  return <MovieListPage listMovie={listMovie!} country={country} onPageChange={handlePageChange} />
+  return (
+    <MovieListPage
+      listMovie={listMovie as ListMovieResponse}
+      country={country}
+      onPageChange={handlePageChange}
+    />
+  )
 }

@@ -8,6 +8,15 @@ import MovieListPage from '@/page/movie-list-page'
 import Loading from '@/component/status/loading'
 import Error from '@/component/status/error'
 import MovieFilter from '@/component/filter/movie-filter'
+import { ListMovieResponse } from '@/api/kkphim/list-movie/get-list-movie-by-year'
+
+interface FilterState {
+  year: string
+  country: string
+  category: string
+  sortField: string
+  sortType: string
+}
 
 export default function MovieByCategoryPage() {
   return (
@@ -22,7 +31,7 @@ function MovieListPageContent() {
   const router = useRouter()
   const pageParam = Number(searchParams.get('page') ?? '1')
   const category = searchParams.get('category') ?? ''
-  const [filterDraft, setFilterDraft] = useState({
+  const [filterDraft, setFilterDraft] = useState<FilterState>({
     year: searchParams.get('year') ?? '',
     country: searchParams.get('country') ?? '',
     category: searchParams.get('category') ?? '',
@@ -42,7 +51,7 @@ function MovieListPageContent() {
     isError
   } = useQuery(
     getListMovieByCategory({
-      category: category!,
+      category: category,
       page: pageParam,
       country: filter.country || undefined,
       year: filter.year || undefined,
@@ -74,9 +83,9 @@ function MovieListPageContent() {
     router.replace(`/list-movie/category?category=${filter.category}&page=1`)
   }
 
-  const pushFilterParams = (page: number, f: typeof filter) => {
+  const pushFilterParams = (page: number, f: FilterState) => {
     const params = new URLSearchParams({
-      category: f.category!,
+      category: f.category,
       page: String(page)
     })
     if (f.country) params.set('country', f.country)
@@ -107,7 +116,12 @@ function MovieListPageContent() {
         onSubmit={handleFilter} // chỉ khi bấm lọc mới fetch
         onReset={handleReset}
       />
-      <MovieListPage listMovie={listMovie!} country={filter.country} onPageChange={handlePageChange} headTitle={true} />
+      <MovieListPage
+        listMovie={listMovie as ListMovieResponse}
+        country={filter.country}
+        onPageChange={handlePageChange}
+        headTitle={true}
+      />
     </div>
   )
 }
