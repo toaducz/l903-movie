@@ -132,7 +132,7 @@ export function mapOphimUpdateItemToMovie(item: OphimUpdateItem, cdnImageDomain?
 export function mapOphimUpdatePagination(apiPaginate: OphimUpdateResponse['data']['params']['pagination']): Pagination {
   return {
     currentPage: apiPaginate.currentPage,
-    totalPages: apiPaginate.totalPages,
+    totalPages: apiPaginate.pageRanges,
     totalItems: apiPaginate.totalItems,
     totalItemsPerPage: apiPaginate.totalItemsPerPage
   }

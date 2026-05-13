@@ -35,7 +35,7 @@ export interface OphimUpdateResponse {
         totalItems: number
         totalItemsPerPage: number
         currentPage: number
-        totalPages: number
+        pageRanges: number
       }
     }
     APP_DOMAIN_FRONTEND: string
