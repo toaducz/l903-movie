@@ -5,23 +5,7 @@ import { queryOptions } from '@tanstack/react-query'
 import { ophim } from '@/utils/env'
 import { mapOphimUpdateItemToMovie, mapOphimUpdatePagination } from '@/utils/mapping'
 import { OphimUpdateItem } from '../get-update-movie'
-
-type Param = {
-  category: string
-  keyword: string
-  filterCategory: string[]
-  filterCountry: string[]
-  filterYear: string[]
-  filterType: string[]
-  sortField: string
-  sortType: string
-  pagination: {
-    totalItems: number
-    totalItemsPerPage: number
-    currentPage: number
-    totalPages: number
-  }
-}
+import { Param } from '../get-update-movie'
 
 type SeoOnPage = {
   og_type: string

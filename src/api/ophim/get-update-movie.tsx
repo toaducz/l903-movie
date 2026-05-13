@@ -30,17 +30,21 @@ export interface OphimUpdateResponse {
     breadCrumb: Array<{ name: string; slug: string }>
     titlePage: string
     items: OphimUpdateItem[]
-    params: {
-      pagination: {
-        totalItems: number
-        totalItemsPerPage: number
-        currentPage: number
-        pageRanges: number
-      }
-    }
+    params: Param
     APP_DOMAIN_FRONTEND: string
     APP_DOMAIN_CDN_IMAGE: string
   }
+}
+
+export type Pagination = {
+  totalItems: number
+  totalItemsPerPage: number
+  currentPage: number
+  pageRanges: number
+}
+
+export type Param = {
+  pagination: Pagination
 }
 
 export const getUpdateMovieOptions = ({ page = 1 }: { page?: number }) => ({
