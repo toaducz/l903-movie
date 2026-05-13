@@ -17,7 +17,7 @@ export async function GET(req: NextRequest) {
 
   const { data, error } = await supabase
     .from('user_notifications')
-    .select('id, slug, movie_name, episode_name, is_read, created_at')
+    .select('id, slug, source, movie_name, episode_name, is_read, created_at')
     .eq('user_id', user_id)
     .order('created_at', { ascending: false })
     .limit(20)

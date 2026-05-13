@@ -37,7 +37,7 @@ export async function POST(req: NextRequest) {
 
   const { data, error } = await supabase
     .from('favorite')
-    .insert([{ user_id: user_id, slug: slug, name: name, image: image, source: source ?? 'kkphim' }])
+    .insert([{ user_id: user_id, slug: slug, name: name, image: image, source: source ?? 'ophim' }])
 
   if (error) {
     console.error('Lỗi Supabase:', error)

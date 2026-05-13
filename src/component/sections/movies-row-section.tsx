@@ -3,6 +3,7 @@
 import Image from 'next/image'
 import Link from 'next/link'
 import { Movie } from '@/api/kkphim/get-update-movie'
+import { getOptimizedImage } from '@/utils/common'
 
 type Props = {
   movies: Movie[]
@@ -36,19 +37,7 @@ export default function MoviesRowSection({
       {/* Horizontal 16:10 card grid */}
       <div className='max-w-[1400px] mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5'>
         {movies.map(movie => {
-          const poster =
-            [movie.poster_url, movie.thumb_url]
-              .map(u => {
-                if (!u || typeof u === 'object') return null
-                const s = String(u).trim()
-                if (s === '{}' || s === '') return null
-                return s.startsWith('http') ? s : `https://phimimg.com/${s.replace(/^\/+/, '')}`
-              })
-              .find(Boolean) ?? null
-
-          const optimized = poster
-            ? `https://wsrv.nl/?url=${encodeURIComponent(poster)}&w=480&h=300&fit=cover&output=webp&q=65`
-            : null
+          const optimized = getOptimizedImage(movie.thumb_url, movie.poster_url, 'poster', 480, 300, 65)
 
           return (
             <Link

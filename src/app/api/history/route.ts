@@ -27,7 +27,7 @@ export async function POST(req: NextRequest) {
       episode_name, 
       progress: progress ?? 0, 
       duration: duration ?? 0, 
-      source: source ?? 'kkphim',
+      source: source ?? 'ophim',
       updated_at: new Date().toISOString() 
     },
     { onConflict: 'user_id,slug,source' }

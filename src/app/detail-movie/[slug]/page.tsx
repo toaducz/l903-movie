@@ -10,7 +10,7 @@ import EpisodeList from '@/component/interactive/episode-list'
 import SubtitleBadges from '@/component/interactive/subtitle-badges'
 import ReactPlayer from 'react-player'
 import Loading from '@/component/status/loading'
-import Error from '@/component/status/error'
+// import Error from '@/component/status/error'
 import Image from 'next/image'
 import thumbnail from '@/assets/gumaKe.png'
 import FavoriteButton from '@/component/interactive/favorite-button'
@@ -27,7 +27,7 @@ export default function WatchPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { user } = useAuth()
-  const source = searchParams.get('source') ?? 'kkphim'
+  const source = searchParams.get('source') ?? 'ophim'
   const { data, isLoading, isError } = useQuery(
     source === 'ophim' ? getDetailMovieOphim({ slug: String(slug) }) : getDetailMovie({ slug: String(slug) })
   )
@@ -158,7 +158,46 @@ export default function WatchPage() {
   }, [autoplayCountdown])
 
   if (isLoading) return <Loading />
-  if (isError || !data || data.status === false) return <Error message={data?.msg} />
+  if (isError || !data || data.status === false) {
+    return (
+      <div className='min-h-screen flex flex-col items-center justify-center text-white bg-[var(--c-bg)] p-5'>
+        <div className='bg-[var(--c-card)] border border-[var(--c-line)] rounded-3xl p-8 max-w-lg w-full text-center shadow-2xl'>
+          <h2 className='text-2xl font-black text-[var(--c-pink)] mb-3'>KHÔNG TÌM THẤY PHIM</h2>
+          <p className='text-white/60 mb-6 text-sm'>
+            Phim này có thể chưa cập nhật, hoặc bị lệch dữ liệu ở nguồn{' '}
+            <strong className='text-white uppercase'>{source}</strong>. Hãy thử tìm ở các nguồn dự phòng khác bên dưới:
+          </p>
+          <div className='flex flex-col gap-3'>
+            {['ophim', 'kkphim', 'nguonc']
+              .filter(s => s !== source)
+              .map(s => (
+                <button
+                  key={s}
+                  onClick={() => {
+                  if (s === 'nguonc') {
+                    router.push(`/nguonc/detail-movie/${slug}`)
+                    return
+                  }
+                  const params = new URLSearchParams(searchParams.toString())
+                  params.set('source', s)
+                  router.replace(`?${params.toString()}`)
+                }}
+                  className='w-full py-3 rounded-xl font-bold text-sm bg-white/5 border border-white/10 hover:bg-white/10 hover:text-[var(--c-cyan)] transition-all cursor-pointer uppercase'
+                >
+                  TÌM Ở {s}
+                </button>
+              ))}
+          </div>
+          <button
+            onClick={() => router.push('/')}
+            className='mt-6 text-xs text-white/40 hover:text-white transition-colors underline cursor-pointer'
+          >
+            Về trang chủ
+          </button>
+        </div>
+      </div>
+    )
+  }
 
   const flatEpisodes = data.episodes.flatMap(server => server.server_data)
   const currentIndex = flatEpisodes.findIndex(ep => ep.link_embed === selectedEpisode)
@@ -242,6 +281,33 @@ export default function WatchPage() {
                 {movie.name}
               </h1>
               <p className='text-lg sm:text-xl text-[var(--c-cyan)] font-bold drop-shadow-md'>{movie.origin_name}</p>
+
+              {/* Nút Đổi Nguồn (Source Switcher) */}
+              <div className='mt-4 flex flex-wrap gap-2 items-center'>
+                <span className='text-xs text-white/60 font-medium uppercase tracking-wider mr-2'>Nguồn:</span>
+                {['ophim', 'kkphim', 'nguonc'].map(s => (
+                  <button
+                    key={s}
+                    onClick={() => {
+                      if (s === source) return
+                      if (s === 'nguonc') {
+                        router.push(`/nguonc/detail-movie/${slug}`)
+                        return
+                      }
+                      const params = new URLSearchParams(searchParams.toString())
+                      params.set('source', s)
+                      router.replace(`?${params.toString()}`)
+                    }}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all border cursor-pointer uppercase ${
+                      source === s
+                        ? 'bg-[var(--c-pink)] text-white border-[var(--c-pink)] shadow-[0_0_10px_var(--c-pink)]'
+                        : 'bg-black/40 text-white/50 border-white/10 hover:bg-white/10 hover:text-white'
+                    }`}
+                  >
+                    {s}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
 
@@ -260,7 +326,7 @@ export default function WatchPage() {
                   loading='lazy'
                   width={400}
                   height={600}
-                  src={movie.poster_url}
+                  src={movie.thumb_url}
                   alt={movie.name}
                   className='w-full h-auto object-cover'
                 />
@@ -346,7 +412,7 @@ export default function WatchPage() {
                   <span className='c-marker pink' />
                   Nội Dung
                 </h2>
-                <p className='text-white/70 leading-relaxed text-sm'>{movie.content}</p>
+                <p className='text-white/70 leading-relaxed text-sm line-clamp-5 overflow-hidden'>{movie.content}</p>
               </div>
 
               {movie.trailer_url && (
@@ -380,9 +446,11 @@ export default function WatchPage() {
           ◀ Quay lại thông tin phim
         </button>
 
-        <div className='flex flex-col sm:flex-row sm:items-end gap-2 mb-6'>
-          <h1 className='text-2xl sm:text-3xl font-black tracking-tight text-white'>{movie.name}</h1>
-          <span className='text-[var(--c-pink)] text-sm font-bold italic sm:mb-1'>{movie.origin_name}</span>
+        <div className='flex flex-col sm:flex-row justify-between sm:items-end gap-4 mb-6'>
+          <div className='flex flex-col sm:flex-row sm:items-end gap-2'>
+            <h1 className='text-2xl sm:text-3xl font-black tracking-tight text-white'>{movie.name}</h1>
+            <span className='text-[var(--c-pink)] text-sm font-bold italic sm:mb-1'>{movie.origin_name}</span>
+          </div>
         </div>
 
         {/* Player trong card */}
@@ -582,6 +650,33 @@ export default function WatchPage() {
           </div>
         )}
 
+        {/* Nút Đổi Nguồn (Source Switcher) */}
+        <div className='flex flex-wrap gap-2 items-center mb-6'>
+          <span className='text-xs text-white/60 font-medium uppercase tracking-wider mr-2'>Nguồn:</span>
+          {['ophim', 'kkphim', 'nguonc'].map(s => (
+            <button
+              key={s}
+              onClick={() => {
+                if (s === source) return
+                if (s === 'nguonc') {
+                  router.push(`/nguonc/detail-movie/${slug}`)
+                  return
+                }
+                const params = new URLSearchParams(searchParams.toString())
+                params.set('source', s)
+                router.replace(`?${params.toString()}`)
+              }}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all border cursor-pointer uppercase ${
+                source === s
+                  ? 'bg-[var(--c-pink)] text-white border-[var(--c-pink)] shadow-[0_0_10px_var(--c-pink)]'
+                  : 'bg-white/5 text-white/50 border-white/10 hover:bg-white/10 hover:text-white'
+              }`}
+            >
+              {s}
+            </button>
+          ))}
+        </div>
+
         <div className='grid md:grid-cols-3 gap-8 items-start'>
           {/* Thông tin phim tóm tắt */}
           <div className='md:col-span-1 flex flex-col gap-6'>
@@ -624,7 +719,7 @@ export default function WatchPage() {
                 </p>
               </div>
 
-              <div className='mt-4 pt-4 border-t border-[var(--c-line)] text-xs text-white/60 leading-relaxed'>
+              <div className='mt-4 pt-4 border-t border-[var(--c-line)] text-xs text-white/60 leading-relaxed line-clamp-5 overflow-hidden'>
                 {movie.content}
               </div>
             </div>

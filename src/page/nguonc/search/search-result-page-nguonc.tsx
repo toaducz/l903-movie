@@ -96,8 +96,8 @@ export default function SearchResultPageNguonc({ keyword, page }: Readonly<Searc
           <div></div>
         )}
       </div>
-      <div className='flex justify-center items-center '>
-        <div className='grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-5 sm:gap-5 gap-3 p-3 w-full'>
+      <div className='w-full'>
+        <div className='grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-5 gap-3 sm:gap-5 p-3 w-full lg:px-24'>
           {result?.movies.map(movie => (
             <div key={movie._id}>
               <MovieItem movie={movie} source='nguonc' />

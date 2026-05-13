@@ -6,10 +6,16 @@ import Image from 'next/image'
 import errorImage from '@/assets/error.jpg'
 import Error from '@/component/status/error'
 import { Movie } from '@/api/kkphim/get-update-movie'
-import { ListMovieResponse } from '@/api/kkphim/list-movie/get-list-movie-by-year'
+import { Pagination as PaginationType } from '@/api/pagination'
 
 interface MovieListPageProps {
-  listMovie: ListMovieResponse
+  listMovie: {
+    items: Movie[]
+    pagination: PaginationType
+    cdnImageDomain?: string
+    titlePage?: string
+    seoOnPage?: { descriptionHead?: string }
+  } | undefined | null
   country?: string
   onPageChange: (page: number) => void
   headTitle?: boolean
@@ -21,7 +27,7 @@ export default function MovieListPage({
   onPageChange,
   headTitle = false
 }: Readonly<MovieListPageProps>) {
-  if (listMovie?.data?.items === null || listMovie.status === 'error') {
+  if (!listMovie || !listMovie.items) {
     return <Error />
   }
 
@@ -32,14 +38,14 @@ export default function MovieListPage({
           <h2 className='text-2xl font-semibold text-gray-100 mb-6'>Anime</h2>
         ) : (
           <>
-            <h2 className='text-2xl font-semibold text-gray-100'>{listMovie?.data?.titlePage ?? ''}</h2>
+            <h2 className='text-2xl font-semibold text-gray-100'>{listMovie?.titlePage ?? ''}</h2>
             <h6 className='font-semibold text-gray-100 mb-6 italic'>
-              {listMovie?.data?.seoOnPage.descriptionHead ?? ''}
+              {listMovie?.seoOnPage?.descriptionHead ?? ''}
             </h6>
           </>
         )}
 
-        {listMovie?.data?.items.length === 0 ? (
+        {listMovie.items.length === 0 ? (
           <div>
             <Image
               unoptimized
@@ -56,17 +62,17 @@ export default function MovieListPage({
 
       <div className='flex justify-center items-center'>
         <div className='grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-6 sm:gap-5 gap-3 p-3 w-full'>
-          {listMovie?.data?.items.map((movie: Movie) => (
+          {listMovie.items.map((movie: Movie) => (
             <div key={movie._id}>
-              <MovieItem movie={movie} cdnDomain={listMovie?.data?.APP_DOMAIN_CDN_IMAGE} />
+              <MovieItem movie={movie} cdnDomain={listMovie.cdnImageDomain} />
             </div>
           ))}
         </div>
       </div>
 
       <Pagination
-        currentPage={listMovie?.data?.params.pagination.currentPage ?? 1}
-        totalPages={listMovie?.data?.params.pagination.totalPages ?? 1}
+        currentPage={listMovie.pagination?.currentPage ?? 1}
+        totalPages={listMovie.pagination?.totalPages ?? 1}
         onPageChange={onPageChange}
       />
     </div>

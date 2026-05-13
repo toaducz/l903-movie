@@ -1,8 +1,8 @@
 'use client'
 
 import { useQuery } from '@tanstack/react-query'
-import { getCategorySlug } from '@/api/kkphim/filter/get-category-slug'
-import { getCountrySlug } from '@/api/kkphim/filter/get-country-slug'
+import { getCategorySlug } from '@/api/ophim/filter/get-category-slug'
+import { getCountrySlug } from '@/api/ophim/filter/get-country-slug'
 
 type FilterProps = {
   country: string

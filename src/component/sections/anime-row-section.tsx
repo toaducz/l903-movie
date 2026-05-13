@@ -3,6 +3,7 @@
 import Image from 'next/image'
 import Link from 'next/link'
 import { Movie } from '@/api/kkphim/get-update-movie'
+import { getOptimizedImage } from '@/utils/common'
 
 type Props = {
   movies: Movie[]
@@ -31,9 +32,7 @@ export default function AnimeRowSection({
           <h2 className='text-2xl sm:text-3xl font-black tracking-tight text-white flex items-center gap-3'>
             <span className='c-marker yel' />
             {title}
-            <span className='text-[var(--c-cyan)] font-semibold text-lg tracking-widest self-end pb-0.5'>
-              アニメ
-            </span>
+            <span className='text-[var(--c-cyan)] font-semibold text-lg tracking-widest self-end pb-0.5'>アニメ</span>
             <span className='text-[var(--c-yel)] text-2xl c-burst'>★</span>
           </h2>
           <Link
@@ -47,26 +46,10 @@ export default function AnimeRowSection({
         {/* 6-column anime grid */}
         <div className='relative z-10 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4'>
           {movies.map(movie => {
-            const poster =
-              [movie.poster_url, movie.thumb_url]
-                .map(u => {
-                  if (!u || typeof u === 'object') return null
-                  const s = String(u).trim()
-                  if (s === '{}' || s === '') return null
-                  return s.startsWith('http') ? s : `https://phimimg.com/${s.replace(/^\/+/, '')}`
-                })
-                .find(Boolean) ?? null
-
-            const optimized = poster
-              ? `https://wsrv.nl/?url=${encodeURIComponent(poster)}&w=200&h=300&fit=cover&output=webp&q=60`
-              : null
+            const optimized = getOptimizedImage(movie.thumb_url, movie.poster_url, 'thumb', 200, 300, 60)
 
             return (
-              <Link
-                key={movie._id}
-                href={`/detail-movie/${movie.slug}`}
-                className='group block cursor-pointer'
-              >
+              <Link key={movie._id} href={`/detail-movie/${movie.slug}`} className='group block cursor-pointer'>
                 {/* Art — tilts + cyan border on hover */}
                 <div
                   className='relative aspect-[2/3] rounded-xl overflow-hidden border-2 border-transparent transition-all duration-200'

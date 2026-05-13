@@ -3,6 +3,7 @@
 import Image from 'next/image'
 import Link from 'next/link'
 import { Movie } from '@/api/kkphim/get-update-movie'
+import { getOptimizedImage } from '@/utils/common'
 
 type Props = {
   movies: Movie[]
@@ -10,7 +11,11 @@ type Props = {
   viewAllHref?: string
 }
 
-export default function SeriesRowSection({ movies, title = 'Phim bộ — đu đến cùng', viewAllHref = '/list-movie?typelist=phim-bo' }: Props) {
+export default function SeriesRowSection({
+  movies,
+  title = 'Phim bộ — đu đến cùng',
+  viewAllHref = '/list-movie?typelist=phim-bo'
+}: Props) {
   if (!movies.length) return null
 
   return (
@@ -32,19 +37,7 @@ export default function SeriesRowSection({ movies, title = 'Phim bộ — đu đ
       {/* Grid */}
       <div className='max-w-[1400px] mx-auto grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-5 sm:gap-6'>
         {movies.map((movie, i) => {
-          const poster =
-            [movie.poster_url, movie.thumb_url]
-              .map(u => {
-                if (!u || typeof u === 'object') return null
-                const s = String(u).trim()
-                if (s === '{}' || s === '') return null
-                return s.startsWith('http') ? s : `https://phimimg.com/${s.replace(/^\/+/, '')}`
-              })
-              .find(Boolean) ?? null
-
-          const optimized = poster
-            ? `https://wsrv.nl/?url=${encodeURIComponent(poster)}&w=250&h=375&fit=cover&output=webp&q=60`
-            : null
+          const optimized = getOptimizedImage(movie.thumb_url, movie.poster_url, 'thumb', 250, 375, 60)
 
           return (
             <Link
@@ -53,17 +46,18 @@ export default function SeriesRowSection({ movies, title = 'Phim bộ — đu đ
               className='group relative cursor-pointer block'
               style={{
                 transform: i % 2 === 0 ? 'rotate(-0.8deg)' : 'rotate(0.8deg)',
-                transition: 'transform .2s',
+                transition: 'transform .2s'
               }}
               onMouseEnter={e => ((e.currentTarget as HTMLElement).style.transform = 'rotate(0deg) scale(1.02)')}
               onMouseLeave={e =>
-                ((e.currentTarget as HTMLElement).style.transform =
-                  i % 2 === 0 ? 'rotate(-0.8deg)' : 'rotate(0.8deg)')
+                ((e.currentTarget as HTMLElement).style.transform = i % 2 === 0 ? 'rotate(-0.8deg)' : 'rotate(0.8deg)')
               }
             >
               {/* Art */}
-              <div className='relative aspect-[2/3] rounded-xl overflow-hidden border border-white/10 transition-all duration-200
-                              group-hover:shadow-[0_14px_30px_-10px_rgba(236,72,153,.45)]'>
+              <div
+                className='relative aspect-[2/3] rounded-xl overflow-hidden border border-white/10 transition-all duration-200
+                              group-hover:shadow-[0_14px_30px_-10px_rgba(236,72,153,.45)]'
+              >
                 {/* Big number behind */}
                 <span
                   className='absolute -bottom-4 -left-2 font-mono font-black leading-none pointer-events-none select-none'

@@ -3,7 +3,7 @@
 import { Suspense, useState, useEffect } from 'react'
 import { notFound, useSearchParams, useRouter } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
-import { getListMovieByYear } from '@/api/kkphim/list-movie/get-list-movie-by-year'
+import { getListMovieByYear } from '@/api/ophim/list-movie/get-list-movie-by-year'
 import MovieListPage from '@/page/movie-list-page'
 import Loading from '@/component/status/loading'
 import Error from '@/component/status/error'
@@ -73,8 +73,7 @@ function MovieListPageContent() {
       country: '',
       category: '',
       sortField: '',
-      sortType: '',
-      page: 1
+      sortType: ''
     }
     setFilterDraft(resetFilter)
     setFilter(resetFilter)
@@ -101,7 +100,9 @@ function MovieListPageContent() {
         onSubmit={handleFilterSubmit}
         onReset={handleFilterReset}
       />
-      <MovieListPage listMovie={listMovie!} onPageChange={handlePageChange} headTitle={true} />
+      <MovieListPage
+      listMovie={listMovie}
+      onPageChange={handlePageChange} headTitle={true} />
     </div>
   )
 }

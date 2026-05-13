@@ -8,6 +8,7 @@ import { useAuth } from '@/app/auth-provider'
 type Notification = {
   id: string
   slug: string
+  source?: string
   movie_name: string
   episode_name: string
   is_read: boolean
@@ -74,9 +75,14 @@ export default function NotificationBell() {
     setOpen(prev => !prev)
   }
 
-  const handleClickNotification = (slug: string) => {
+  const handleClickNotification = (slug: string, source?: string) => {
     setOpen(false)
-    router.push(`/detail-movie/${slug}`)
+    if (source === 'nguonc') {
+      router.push(`/nguonc/detail-movie/${slug}`)
+    } else {
+      const sourceQuery = source ? `?source=${source}` : ''
+      router.push(`/detail-movie/${slug}${sourceQuery}`)
+    }
   }
 
   if (!user) return null
@@ -153,7 +159,7 @@ export default function NotificationBell() {
               notifications.map(notif => (
                 <button
                   key={notif.id}
-                  onClick={() => handleClickNotification(notif.slug)}
+                  onClick={() => handleClickNotification(notif.slug, notif.source)}
                   className='w-full text-left px-4 py-3 flex items-start gap-3 hover:bg-white/5 transition-colors border-b cursor-pointer'
                   style={{ borderColor: 'var(--c-line)' }}
                 >

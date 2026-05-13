@@ -1,45 +1,17 @@
-// import { Movie } from '@/api/kkphim/get-update-movie'
-// import { Pagination } from '@/api/pagination'
 import { request } from '@/utils/request'
 import { queryOptions } from '@tanstack/react-query'
 import { ophim } from '@/utils/env'
 import { mapOphimUpdateItemToMovie, mapOphimUpdatePagination } from '@/utils/mapping'
-import { OphimUpdateItem } from '../get-update-movie'
-import { Param } from '../get-update-movie'
+import { SearchResult } from './get-list-movie-by-category'
 
-type SeoOnPage = {
-  og_type: string
-  titleHead: string
-  descriptionHead: string
-  og_image: string[]
-  og_url: string
-}
-
-type BreadCrumbItem = {
-  name: string
-  isCurrent: boolean
-  position: number
-}
-
-export type SearchResult = {
-  seoOnPage: SeoOnPage
-  breadCrumb: BreadCrumbItem[]
-  titlePage: string
-  items: OphimUpdateItem[]
-  params: Param
-  type_list: string
-  APP_DOMAIN_FRONTEND: string
-  APP_DOMAIN_CDN_IMAGE: string
-}
-
-type ListMovieByCategoryRequest = {
-  category: string
+type ListMovieByYearRequest = {
+  year: string
   page: number
   sort_field?: string
   sort_type?: string
   sort_lang?: string
+  category?: string
   country?: string
-  year?: string
   limit?: number
 }
 
@@ -49,16 +21,16 @@ type ListMovieResponse = {
   status: string
 }
 
-export const getListMovieByCategory = ({
-  category,
+export const getListMovieByYear = ({
+  year,
   page = 1,
   sort_field,
   sort_type,
   sort_lang,
+  category,
   country,
-  year,
   limit = 12
-}: ListMovieByCategoryRequest) => {
+}: ListMovieByYearRequest) => {
   const params: Record<string, unknown> = {
     page,
     ...(sort_field && { sort_field }),
@@ -71,9 +43,10 @@ export const getListMovieByCategory = ({
   }
 
   return queryOptions({
-    queryKey: ['ophim', 'list-movie-by-category', category, page, limit, year, sort_type, country],
+    queryKey: ['ophim', 'list-movie-by-year', category, page, limit, year, sort_type, country],
     queryFn: async () => {
-      const response = await request<ListMovieResponse>(ophim, `the-loai/${category}`, 'GET', params)
+      // Ophim doesn't have a /nam/ endpoint, so we use the search/filter endpoint
+      const response = await request<ListMovieResponse>(ophim, `danh-sach/phim-moi-cap-nhat`, 'GET', params)
       if (!response) throw new Error('Failed to fetch movie list')
 
       return {

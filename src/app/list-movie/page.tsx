@@ -3,11 +3,10 @@
 import { Suspense, useEffect } from 'react'
 import { notFound, useSearchParams, useRouter } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
-import { getListMovie } from '@/api/kkphim/get-list-movie'
+import { getListMovie } from '@/api/ophim/list-movie/get-list-movie'
 import MovieListPage from '@/page/movie-list-page'
 import Loading from '@/component/status/loading'
 import Error from '@/component/status/error'
-import { ListMovieResponse } from '@/api/kkphim/get-list-movie'
 
 export default function MoviePage() {
   return (
@@ -60,7 +59,7 @@ function MovieListPageContent() {
 
   return (
     <MovieListPage
-      listMovie={listMovie as ListMovieResponse}
+      listMovie={listMovie}
       country={country}
       onPageChange={handlePageChange}
     />

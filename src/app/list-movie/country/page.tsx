@@ -3,7 +3,7 @@
 import { Suspense, useState, useEffect } from 'react'
 import { notFound, useSearchParams, useRouter } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
-import { getListMovieByCountry } from '@/api/kkphim/list-movie/get-list-movie-by-country'
+import { getListMovieByCountry } from '@/api/ophim/list-movie/get-list-movie-by-country'
 import MovieListPage from '@/page/movie-list-page'
 import Loading from '@/component/status/loading'
 import Error from '@/component/status/error'
@@ -61,8 +61,7 @@ function MovieListPageContent() {
       year: '',
       category: '',
       sortField: '',
-      sortType: '',
-      page: 1
+      sortType: ''
     }
     setFilterDraft(resetFilter)
     setFilter(resetFilter)
@@ -99,10 +98,6 @@ function MovieListPageContent() {
         sortType={filterDraft.sortType}
         onChange={draft => {
           setFilterDraft(draft)
-          // Nếu country đổi thì push ngay (case đặc biệt)
-          if (draft.country && draft.country !== countryParam) {
-            router.push(`/list-movie/country?country=${draft.country}&page=1`)
-          }
         }}
         onSubmit={handleFilter}
         onReset={handleReset}

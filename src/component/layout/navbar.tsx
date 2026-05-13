@@ -6,11 +6,11 @@ import { useRouter, usePathname } from 'next/navigation'
 import { useState, useEffect, useRef } from 'react'
 import menu from '@/assets/menu.png'
 import { useQuery } from '@tanstack/react-query'
-import { getCategorySlug } from '@/api/kkphim/filter/get-category-slug'
-import { getCountrySlug } from '@/api/kkphim/filter/get-country-slug'
+import { getCategorySlug } from '@/api/ophim/filter/get-category-slug'
+import { getCountrySlug } from '@/api/ophim/filter/get-country-slug'
 import userIcon from '@/assets/user-icons.png'
 import { useAuth } from '@/app/auth-provider'
-import { getSearchByName } from '@/api/kkphim/search/get-search'
+import { getSearchMovieListOphim } from '@/api/ophim/search/get-search'
 import NotificationBell from '@/component/layout/notification-bell'
 
 type DropdownItem = { _id: string; slug: string; name: string }
@@ -44,10 +44,10 @@ export default function Navbar() {
   }, [search])
 
   const { data: suggestionData } = useQuery({
-    ...getSearchByName({ keyword: debouncedSearch, page: 1, limit: 6 }),
+    ...getSearchMovieListOphim({ keyword: debouncedSearch, page: 1, limit: 6 }),
     enabled: debouncedSearch.length >= 2
   })
-  const suggestions = suggestionData?.data?.items?.slice(0, 6) ?? []
+  const suggestions = suggestionData?.movies?.slice(0, 6) ?? []
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -131,9 +131,9 @@ export default function Navbar() {
       tooltip: 'Ở đây cũng nhiều phim chất lắm, mỗi tội có quảng cáo :v'
     },
     {
-      href: { pathname: '/ophim/home', query: { page: 1 } },
-      label: 'Ophim.cc',
-      tooltip: 'Ophim.cc'
+      href: { pathname: '/kkphim/home', query: { page: 1 } },
+      label: 'KKPhim',
+      tooltip: 'Nguồn phụ trợ (KKPhim)'
     }
   ]
 
