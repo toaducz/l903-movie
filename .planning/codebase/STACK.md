@@ -16,8 +16,8 @@
 - Node.js (implied by Next.js 15; không khóa version trong `.nvmrc` hoặc `.node-version`)
 
 **Package Manager:**
-- npm
-- Lockfile: `package-lock.json` (present khi đã chạy `npm install`)
+- pnpm
+- Lockfile: `pnpm-lock.yaml` (present khi đã chạy `pnpm install`)
 
 ## Frameworks
 
@@ -66,7 +66,7 @@
 
 **Development:**
 - Node.js (khuyến nghị LTS tương thích Next 15)
-- npm
+- pnpm
 
 **Production:**
 - Vercel (theo CLAUDE.md); có thể chạy `next start` trên bất kỳ Node host nào

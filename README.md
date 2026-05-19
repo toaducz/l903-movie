@@ -6,20 +6,20 @@
 
 ![demo_2](./src/assets/demo2.png) <!-- [image] -->
 
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+Dự án xem phim sử dụng [Next.js](https://nextjs.org) được khởi tạo bằng [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
-## Getting Started
+## Hướng dẫn sử dụng
 
-First, run the development server:
+Đầu tiên, cài đặt các thư viện:
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+pnpm install
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Sau đó, khởi chạy môi trường chạy thử:
+
+```bash
+pnpm dev
+```
+
+Mở [http://localhost:3000](http://localhost:3000) trên trình duyệt của bạn để xem kết quả.
