@@ -100,14 +100,15 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
 
   const [seekHint, setSeekHint] = useState<{ side: 'left' | 'right'; key: number } | null>(null)
   const lastTapRef = useRef<{ time: number; side: 'left' | 'right' } | null>(null)
+  const singleTapTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const handleTap = useCallback((e: React.TouchEvent<HTMLDivElement>) => {
     const player = playerRef.current
     if (!player) return
 
-    // Không trigger double-tap khi chạm vào control bar
+    // Không trigger khi chạm vào control bar hoặc các nút UI
     const target = e.target as HTMLElement
-    if (target.closest('.vjs-control-bar')) return
+    if (target.closest('.vjs-control-bar') || target.closest('button')) return
 
     const touch = e.changedTouches[0]
     const rect = (e.currentTarget as HTMLDivElement).getBoundingClientRect()
@@ -116,14 +117,30 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
     const last = lastTapRef.current
 
     if (last && now - last.time < 300 && last.side === side) {
-      // double-tap detected
+      // double-tap detected → tua ±10s, hủy single-tap timer
       lastTapRef.current = null
+      if (singleTapTimerRef.current) {
+        clearTimeout(singleTapTimerRef.current)
+        singleTapTimerRef.current = null
+      }
       const delta = side === 'right' ? 10 : -10
       player.currentTime(Math.max(0, (player.currentTime() ?? 0) + delta))
       setSeekHint({ side, key: now })
       setTimeout(() => setSeekHint(null), 700)
     } else {
       lastTapRef.current = { time: now, side }
+      // single-tap → đợi 300ms, nếu không có tap thứ 2 thì toggle pause/play
+      if (singleTapTimerRef.current) {
+        clearTimeout(singleTapTimerRef.current)
+      }
+      singleTapTimerRef.current = setTimeout(() => {
+        singleTapTimerRef.current = null
+        if (player.paused()) {
+          player.play()?.catch(() => {})
+        } else {
+          player.pause()
+        }
+      }, 300)
     }
   }, [])
 
