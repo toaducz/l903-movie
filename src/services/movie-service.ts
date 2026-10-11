@@ -75,7 +75,8 @@ function mapKKMovieToItem(m: KKMovie, cdnDomain?: string, source: MovieSource = 
     category: m.category,
     country: m.country,
     source,
-    cdnImageDomain: cdn
+    cdnImageDomain: cdn,
+    tmdb: m.tmdb ? { vote_average: m.tmdb.vote_average, vote_count: m.tmdb.vote_count } : undefined
   }
 }
 

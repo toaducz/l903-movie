@@ -44,6 +44,7 @@ export default function MovieItem({ movie, color, source, index, cdnDomain }: Re
   const imageSrc = poster || thumb || 'https://via.placeholder.com/250x375?text=No+Poster'
 
   const isPriority = index !== undefined && index < 6
+  const rating = Number(movie.tmdb?.vote_average) || 0
 
   // Cycle accent colours for visual variety
   const ACCENTS = ['var(--c-pink)', 'var(--c-yel)', 'var(--c-cyan)', 'var(--c-orange)']
@@ -149,7 +150,14 @@ export default function MovieItem({ movie, color, source, index, cdnDomain }: Re
         </h2>
         <p className='text-[11px] text-white/40 line-clamp-1 font-light tracking-wide'>{movie.origin_name}</p>
         <div className='flex items-center justify-between pt-1'>
-          <span className='text-[10px] text-white/30 font-light'>{movie.year}</span>
+          <span className='flex items-center gap-1.5 text-[10px] text-white/30 font-light'>
+            {movie.year}
+            {rating > 0 && (
+              <span className='font-bold' style={{ color: 'var(--c-yel)' }} title={`TMDB ${rating.toFixed(1)}/10`}>
+                ★ {rating.toFixed(1)}
+              </span>
+            )}
+          </span>
           <div className='flex gap-1 overflow-hidden'>
             {movie.category?.slice(0, 1).map(cat => (
               <span key={cat.id} className='text-[10px] text-white/30 font-light truncate'>

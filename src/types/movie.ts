@@ -31,6 +31,7 @@ export interface MovieItem {
   country?: CountryItem[]
   source?: MovieSource
   cdnImageDomain?: string
+  tmdb?: { vote_average: number; vote_count: number }
 }
 
 export interface EpisodeItem {
