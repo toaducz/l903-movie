@@ -105,10 +105,10 @@ export function getWatchingInProgress(): WatchingItem[] {
     const key = `${movie.slug}_${movie.episodeName}`
     const progress = getWatchProgress(key)
     const duration = getWatchDuration(key)
-    
+
     // Nếu là tập 2 trở đi của phim bộ thì luôn hiện dù xem < 30s
     const isMovie = movie.episodeName.toLowerCase() === 'full' || /^tập\s*0?1$/i.test(movie.episodeName)
-    
+
     if ((progress > 30 || !isMovie) && duration > 0) {
       const percent = Math.min(Math.round((progress / duration) * 100), 99)
       if (percent < 95) {
@@ -118,6 +118,21 @@ export function getWatchingInProgress(): WatchingItem[] {
   }
 
   return result
+}
+
+export function removeFromViewHistory(slug: string, episodeName?: string) {
+  if (typeof window === 'undefined') return
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY)
+    if (stored) {
+      const history: { data: Movie; expireAt: number }[] = JSON.parse(stored)
+      const next = history.filter(item => item.data?.slug !== slug)
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(next))
+    }
+  } catch (e) {
+    console.error('Remove history failed', e)
+  }
+  if (episodeName) clearWatchProgress(`${slug}_${episodeName}`)
 }
 
 export function getViewHistory(): Movie[] {

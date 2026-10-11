@@ -19,16 +19,16 @@ export async function POST(req: NextRequest) {
   if (!slug) return NextResponse.json({ error: 'Thiếu slug' }, { status: 400 })
 
   const { error } = await supabase.from('watch_history').upsert(
-    { 
-      user_id, 
-      slug, 
-      name, 
-      image, 
-      episode_name, 
-      progress: progress ?? 0, 
-      duration: duration ?? 0, 
+    {
+      user_id,
+      slug,
+      name,
+      image,
+      episode_name,
+      progress: progress ?? 0,
+      duration: duration ?? 0,
       source: source ?? 'ophim',
-      updated_at: new Date().toISOString() 
+      updated_at: new Date().toISOString()
     },
     { onConflict: 'user_id,slug,source' }
   )
@@ -54,13 +54,22 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({ data })
 }
 
-/** DELETE /api/history - xóa toàn bộ lịch sử */
+/** DELETE /api/history - xóa toàn bộ lịch sử, hoặc 1 phim nếu có ?slug=&source= */
 export async function DELETE(req: NextRequest) {
   await setSession(req)
   const user_id = await getUserId(req)
   if (!user_id) return NextResponse.json({ error: 'Chưa đăng nhập' }, { status: 401 })
 
-  const { error } = await supabase.from('watch_history').delete().eq('user_id', user_id)
+  const slug = req.nextUrl.searchParams.get('slug')?.trim()
+  const source = req.nextUrl.searchParams.get('source')?.trim()
+
+  let query = supabase.from('watch_history').delete().eq('user_id', user_id)
+  if (slug) {
+    query = query.eq('slug', slug)
+    if (source) query = query.eq('source', source)
+  }
+
+  const { error } = await query
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return NextResponse.json({ ok: true })
 }
