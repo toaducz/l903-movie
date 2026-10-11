@@ -121,6 +121,7 @@ export default function Navbar() {
   const navLinks = [
     { href: { pathname: '/list-movie', query: { typelist: 'phim-vietsub', page: 1 } }, label: 'Vietsub' },
     { href: { pathname: '/list-movie', query: { typelist: 'phim-long-tieng', page: 1 } }, label: 'Lồng tiếng' },
+    { href: { pathname: '/list-movie', query: { typelist: 'phim-chieu-rap', page: 1 } }, label: 'Chiếu rạp' },
     {
       href: { pathname: '/list-movie', query: { typelist: 'hoat-hinh', country: 'nhat-ban', page: 1 } },
       label: 'Anime',
