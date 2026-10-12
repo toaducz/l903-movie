@@ -110,3 +110,5 @@ export const fetchVsmovDetail = (slug: string) => request<VsmovDetailResponse>(v
 export const fetchVsmovCategories = () => request<VsmovTaxonomyListResponse>(vsmov, 'the-loai', 'GET')
 
 export const fetchVsmovCountries = () => request<VsmovTaxonomyListResponse>(vsmov, 'quoc-gia', 'GET')
+
+export { getUpdateMovieOptions } from './get-update-movie'

@@ -26,7 +26,7 @@ import {
 const SOURCE = 'vsmov' as const
 const QUERY_KEY = 'movie-service-vsmov'
 
-function mapVsmovItem(m: VsmovListItem): MovieItem {
+export function mapVsmovItem(m: VsmovListItem): MovieItem {
   return {
     _id: String(m._id),
     name: m.name,
@@ -50,7 +50,7 @@ function mapVsmovItem(m: VsmovListItem): MovieItem {
   }
 }
 
-function mapVsmovPagination(p: VsmovPagination | undefined, page: number, fallbackCount: number): Pagination {
+export function mapVsmovPagination(p: VsmovPagination | undefined, page: number, fallbackCount: number): Pagination {
   return {
     currentPage: Number(p?.currentPage) || page,
     totalPages: Number(p?.totalPages) || (fallbackCount > 0 ? 1 : 0),

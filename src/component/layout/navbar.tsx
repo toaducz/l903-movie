@@ -114,10 +114,10 @@ export default function Navbar() {
     setIsMenuOpen(prev => !prev)
   }
 
-  // Nguồn phụ trợ linh hoạt: nếu nguồn chính là kkphim thì nút phụ là ophim, và ngược lại
-  const secondarySource = DEFAULT_MOVIE_SOURCE === 'kkphim' ? 'ophim' : 'kkphim'
-  const secondarySourceLabel = secondarySource === 'ophim' ? 'OPhim' : 'KKPhim'
-  const secondarySourceHref = secondarySource === 'ophim' ? '/ophim/home' : '/kkphim/home'
+  // Giao hoán
+  const secondarySource = DEFAULT_MOVIE_SOURCE === 'kkphim' ? 'vsmov' : 'kkphim'
+  const secondarySourceLabel = secondarySource === 'vsmov' ? 'Vsmov' : 'KKPhim'
+  const secondarySourceHref = secondarySource === 'vsmov' ? '/vsmov/home' : '/kkphim/home'
 
   const navLinks = [
     { href: { pathname: '/list-movie', query: { typelist: 'phim-vietsub', page: 1 } }, label: 'Vietsub' },
@@ -133,7 +133,7 @@ export default function Navbar() {
     { href: { pathname: '/list-movie/year', query: { year: '2025', page: 1 } }, label: 'Năm' },
     {
       href: { pathname: '/nguonc/home', query: { page: 1 } },
-      label: 'Nguonc.com',
+      label: 'Nguonc',
       tooltip: 'Ở đây cũng nhiều phim chất lắm, mỗi tội có quảng cáo :v'
     },
     {
@@ -210,7 +210,11 @@ export default function Navbar() {
             }
 
             return (
-              <Link key={i} href={link.href} className='text-white/60 hover:text-white transition-colors duration-150'>
+              <Link
+                key={i}
+                href={link.href}
+                className='text-white/60 hover:text-white transition-colors duration-150 cursor-pointer'
+              >
                 {link.label}
               </Link>
             )
@@ -289,7 +293,7 @@ export default function Navbar() {
         </div>
 
         {/* Hamburger — Mobile */}
-        <button className='lg:hidden focus:outline-none' onClick={toggleMenu} aria-label='Toggle menu'>
+        <button className='lg:hidden focus:outline-none cursor-pointer' onClick={toggleMenu} aria-label='Toggle menu'>
           {isMenuOpen ? (
             <span className='block w-6 h-6 relative'>
               <span className='absolute left-0 top-1/2 w-6 h-0.5 bg-white rotate-45'></span>
@@ -391,7 +395,7 @@ export default function Navbar() {
             <Link
               key={i}
               href={link.href}
-              className='text-white/60 hover:text-white transition-colors duration-150'
+              className='text-white/60 hover:text-white transition-colors duration-150 cursor-pointer'
               onClick={() => setIsMenuOpen(false)}
             >
               {link.label}
