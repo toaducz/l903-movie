@@ -22,6 +22,8 @@ import { useAuth } from '@/app/auth-provider'
 import MovieReview from '@/component/interactive/movie-review'
 import type { SubtitleParams, SubtitleCue } from '@/types/subtitle'
 import { DownloadModal } from '@/component/interactive/download-modal'
+import FinishBanner, { useFinishBanner } from '@/component/watched/finish-banner'
+import { FINISH_THRESHOLD, isFinalEpisode } from '@/lib/watched-finish'
 
 const AUTOPLAY_COUNTDOWN = 5
 // OPhim đã chuyển thành VSMOV nên không còn nút OPhim riêng
@@ -40,6 +42,8 @@ export default function WatchPage() {
   const [iframeLoading, setIframeLoading] = useState(true)
   const [autoplayCountdown, setAutoplayCountdown] = useState<number | null>(null)
   const [showDownloadModal, setShowDownloadModal] = useState(false)
+  // Tỉ lệ đã xem của tập hiện tại khi đã qua 90% (chỉ player riêng báo về) — cho banner "Xem xong rồi?"
+  const [watchRatio, setWatchRatio] = useState(0)
 
   const isWatching = searchParams.get('watch') === '1'
   const epParam = searchParams.get('ep')
@@ -99,6 +103,20 @@ export default function WatchPage() {
   useEffect(() => {
     setSelectedEpisode(null)
   }, [slug])
+
+  useEffect(() => {
+    setWatchRatio(0)
+  }, [selectedEpisode])
+
+  const bannerEpisode = data?.episodes?.flatMap(s => s.server_data).find(ep => ep.link_embed === selectedEpisode)
+  const finishBanner = useFinishBanner(
+    String(slug),
+    Boolean(data) &&
+      !useBackupPlayer &&
+      Boolean(bannerEpisode?.link_m3u8) &&
+      isFinalEpisode(data!, selectedEpisode) &&
+      watchRatio > FINISH_THRESHOLD
+  )
 
   // Khôi phục tập đang xem từ URL khi data đã tải
   useEffect(() => {
@@ -243,6 +261,7 @@ export default function WatchPage() {
   }
 
   const handleEpisodeEnded = () => {
+    setWatchRatio(1)
     if (currentIndex < flatEpisodes.length - 1) {
       setAutoplayCountdown(AUTOPLAY_COUNTDOWN)
     }
@@ -516,25 +535,26 @@ export default function WatchPage() {
                     progressKey={`${slug}_${episodeToPlay.name}`}
                     initialTime={tParam}
                     onEnded={handleEpisodeEnded}
-                    onProgress={
-                      user
-                        ? (time, duration) => {
-                            fetch('/api/history', {
-                              method: 'POST',
-                              headers: { 'Content-Type': 'application/json' },
-                              body: JSON.stringify({
-                                slug: movie.slug,
-                                name: movie.name,
-                                image: movie.poster_url,
-                                episode_name: episodeToPlay.name,
-                                progress: time,
-                                duration,
-                                source
-                              })
-                            })
-                          }
-                        : undefined
-                    }
+                    onProgress={(time, duration) => {
+                      // Chỉ cập nhật ở 10% cuối để không render lại cả trang mỗi 5 giây
+                      const ratio = time / duration
+                      if (ratio > FINISH_THRESHOLD) setWatchRatio(ratio)
+                      if (user) {
+                        fetch('/api/history', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({
+                            slug: movie.slug,
+                            name: movie.name,
+                            image: movie.poster_url,
+                            episode_name: episodeToPlay.name,
+                            progress: time,
+                            duration,
+                            source
+                          })
+                        })
+                      }
+                    }}
                     source={source}
                     options={{
                       autoplay: false,
@@ -620,7 +640,28 @@ export default function WatchPage() {
                     </div>
                   </div>
                 )}
+
+                {finishBanner.visible && (
+                  <FinishBanner
+                    detail={data}
+                    source={source}
+                    percent={watchRatio}
+                    isSeries={flatEpisodes.length > 1}
+                    placement='overlay'
+                    onClose={finishBanner.close}
+                  />
+                )}
               </div>
+              {finishBanner.visible && (
+                <FinishBanner
+                  detail={data}
+                  source={source}
+                  percent={watchRatio}
+                  isSeries={flatEpisodes.length > 1}
+                  placement='inline'
+                  onClose={finishBanner.close}
+                />
+              )}
             </div>
           ) : (
             <div className='flex items-center justify-center h-96 text-white/40 text-sm italic'>

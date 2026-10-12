@@ -1,17 +1,12 @@
 'use client'
 
 import { useState } from 'react'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import { useAuth } from '@/app/auth-provider'
 import WatchedIcon from './watched-icon'
 import { useWatched } from './watched-provider'
-import {
-  getWatchedStatus,
-  saveWatched,
-  toWatchedInput,
-  watchedErrorMessage,
-  WATCHED_QUERY_KEY
-} from '@/services/watched-service'
+import { getWatchedStatus, toWatchedInput } from '@/services/watched-service'
+import { useMarkWatched } from './use-mark-watched'
 import { formatWatchedDate } from './watched-format'
 import type { MovieDetail, MovieSource } from '@/types/movie'
 import type { WatchedMovie } from '@/types/watched'
@@ -22,18 +17,11 @@ type Props = {
   className?: string
 }
 
-function detailMeta(detail: MovieDetail): string {
-  const { movie } = detail
-  const total = movie.episode_total && movie.episode_total !== '1' ? `${movie.episode_total} tập` : ''
-  return [movie.year || '', movie.country?.[0]?.name ?? '', total].filter(Boolean).join(' · ')
-}
-
 // Nút "Đã xem" ở trang chi tiết: chưa xem → đánh dấu ngay + mở popup chấm điểm; đã xem → mở popup sửa
 export default function WatchedButton({ detail, source, className = '' }: Props) {
   const { user } = useAuth()
-  const queryClient = useQueryClient()
-  const { openRating, showToast, refreshWatched } = useWatched()
-  const [marking, setMarking] = useState(false)
+  const { openRating } = useWatched()
+  const { marking, markWatched } = useMarkWatched(detail, source)
   const [hovered, setHovered] = useState(false)
   const slug = detail.movie.slug
   const { data: watched, isLoading } = useQuery(getWatchedStatus(slug, Boolean(user?.id)))
@@ -46,27 +34,6 @@ export default function WatchedButton({ detail, source, className = '' }: Props)
       initialNote: entry.note ?? '',
       meta: `Đã xem ${formatWatchedDate(entry.watched_at)}`
     })
-
-  const markWatched = async () => {
-    setMarking(true)
-    try {
-      const input = toWatchedInput(detail, source)
-      const entry = await saveWatched(input)
-      queryClient.setQueryData([WATCHED_QUERY_KEY, 'status', slug], entry)
-      refreshWatched()
-      openRating({
-        input,
-        mode: 'new',
-        initialScore: entry.score,
-        initialNote: entry.note ?? '',
-        meta: detailMeta(detail)
-      })
-    } catch (err) {
-      showToast({ variant: 'error', title: 'Chưa đánh dấu được', sub: watchedErrorMessage(err) })
-    } finally {
-      setMarking(false)
-    }
-  }
 
   const base = `dx-b ${className}`
 

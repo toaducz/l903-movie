@@ -600,6 +600,65 @@
   animation-play-state: paused;
 }
 
+/* ── Banner cuối phim ("Xem xong rồi?") ──────────────────── */
+.dx-bn {
+  position: relative;
+  background: var(--c-card);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 20px;
+  padding: 20px;
+  color: #fff;
+  animation: dx-toast-in 0.2s ease-out;
+}
+.dx-bn h4 {
+  margin: 10px 0 4px;
+  font-size: 22px;
+  font-weight: 900;
+  letter-spacing: -0.03em;
+}
+.dx-bn p {
+  margin: 0 0 16px;
+  font-size: 13px;
+  color: var(--c-dim);
+  line-height: 1.5;
+  padding-right: 24px;
+}
+.dx-bn-x {
+  width: 36px;
+  height: 36px;
+  top: 12px;
+  right: 12px;
+}
+/* Desktop: thẻ nổi góc phải trên thanh điều khiển (không che phụ đề) */
+.dx-bn-ov {
+  position: absolute;
+  right: 32px;
+  bottom: 110px;
+  z-index: 30;
+  width: 400px;
+  max-width: calc(100% - 64px);
+  box-shadow: 7px 7px 0 var(--c-yel);
+  transform: rotate(-1deg);
+}
+/* Mobile / tablet: đặt ngay dưới player, full-width, 2 nút chia đôi */
+.dx-bn-in {
+  margin: 16px;
+  box-shadow: 5px 5px 0 var(--c-yel);
+}
+.dx-bn-in .dx-b {
+  flex: 1;
+}
+@media (max-width: 1023px) {
+  .dx-bn-ov {
+    display: none;
+  }
+}
+@media (min-width: 1024px) {
+  .dx-bn-in {
+    display: none;
+  }
+}
+
 /* ── Keyframes ─────────────────────────────────────────────── */
 @keyframes dx-fade {
   from {
@@ -662,6 +721,7 @@
     transform: none !important;
   }
   .dx-md,
+  .dx-bn,
   .dx-sheet,
   .dx-toast,
   .dx-backdrop,
@@ -669,6 +729,7 @@
     animation: none !important;
   }
   .dx-bub,
+  .dx-bn-ov,
   .dx-t-ic,
   .dx-slab,
   .dx-tip {
