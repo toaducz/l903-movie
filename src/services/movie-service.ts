@@ -49,6 +49,9 @@ import {
 } from '@/services/vsmov-service'
 import { VSMOV_TYPELISTS } from '@/api/vsmov/vsmov-api'
 
+import { getDetailMovie as nguoncGetDetail } from '@/api/nguonc/get-detail-movie'
+import { getSearchMovieListNguonc as nguoncSearch } from '@/api/nguonc/get-search-movie'
+
 import type { Movie as KKMovie } from '@/api/kkphim/get-update-movie'
 import type { DetailMovie as KKDetailMovie } from '@/api/kkphim/get-detail-movie'
 
@@ -563,6 +566,20 @@ export const getMovieDetail = ({ slug, source }: { slug: string; source?: MovieS
 
   if (resolvedSource === 'vsmov') return vsmovGetDetail({ slug })
 
+  if (resolvedSource === 'nguonc') {
+    return queryOptions<MovieDetail>({
+      queryKey: ['movie-service-v3', 'detail', slug, resolvedSource],
+      queryFn: async (context: QueryFunctionContext): Promise<MovieDetail> => {
+        const opts = nguoncGetDetail({ slug })
+        const res = await callQueryFn<{ status: string; movie: KKDetailMovie | null }>(opts.queryFn, context)
+        if (res.status !== 'success' || !res.movie) throw new Error('Failed to fetch movie detail')
+        const detail = mapKKDetailToShared(res.movie, 'nguonc')
+        // mapToDetailMovie đặt tmdb.id = id nội bộ của NguonC → xoá để không tra phụ đề TMDB sai phim
+        return { ...detail, movie: { ...detail.movie, tmdb: { ...detail.movie.tmdb, id: '' } } }
+      }
+    })
+  }
+
   if (resolvedSource === 'ophim') {
     return queryOptions<MovieDetail>({
       queryKey: ['movie-service-v3', 'detail', slug, resolvedSource],
@@ -798,7 +815,7 @@ export const getSearchSuggestions = ({
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 11. getCombinedSearch (gộp VSMOV + KKPhim, dùng cho search result page)
+// 11. getCombinedSearch (gộp VSMOV + KKPhim + NguonC, dùng cho search result page)
 //     VSMOV ưu tiên, các nguồn sau bổ sung phim không trùng slug
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -828,8 +845,9 @@ export const getCombinedSearch = ({
     queryFn: async (context: QueryFunctionContext): Promise<CombinedSearchResult> => {
       const kkOpts = kkSearch({ keyword, page, limit, category, country, year, sort_field, sort_type })
       const vsmovOpts = vsmovSearch({ keyword, page, limit })
+      const nguoncOpts = nguoncSearch({ keyword, page })
 
-      const [vsmovRes, kkRes] = await Promise.allSettled([
+      const [vsmovRes, kkRes, nguoncRes] = await Promise.allSettled([
         callQueryFn<CombinedSearchResult>(vsmovOpts.queryFn, context),
         callQueryFn<{
           data?: {
@@ -844,18 +862,21 @@ export const getCombinedSearch = ({
               }
             }
           }
-        }>(kkOpts.queryFn, context)
+        }>(kkOpts.queryFn, context),
+        callQueryFn<{ movies: KKMovie[]; pagination: Pagination | null }>(nguoncOpts.queryFn, context)
       ])
 
       const vsmovData = vsmovRes.status === 'fulfilled' ? vsmovRes.value : null
       const kkData = kkRes.status === 'fulfilled' ? kkRes.value?.data : null
+      const nguoncData = nguoncRes.status === 'fulfilled' ? nguoncRes.value : null
 
       const cdnDomain = kkData?.APP_DOMAIN_CDN_IMAGE
       const vsmovMovies: MovieItem[] = vsmovData?.items ?? []
       const kkMovies: MovieItem[] = (kkData?.items ?? []).map(m => mapKKMovieToItem(m, cdnDomain, 'kkphim'))
+      const nguoncMovies: MovieItem[] = (nguoncData?.movies ?? []).map(m => mapKKMovieToItem(m, undefined, 'nguonc'))
 
-      // VSMOV ưu tiên → KKPhim bổ sung, bỏ phim trùng slug
-      const allMovies = [...vsmovMovies, ...kkMovies]
+      // VSMOV ưu tiên → KKPhim → NguonC bổ sung, bỏ phim trùng slug
+      const allMovies = [...vsmovMovies, ...kkMovies, ...nguoncMovies]
       const seenSlugs = new Set<string>()
       const mergedMovies = allMovies.filter(m => {
         if (seenSlugs.has(m.slug)) return false
@@ -869,11 +890,13 @@ export const getCombinedSearch = ({
 
       const vsmovTotalItems = vsmovPag?.totalItems ?? vsmovMovies.length
       const kkTotalItems = kkPag?.totalItems ?? kkMovies.length
-      const totalItems = Math.max(vsmovTotalItems + kkTotalItems, mergedMovies.length)
+      const nguoncTotalItems = nguoncData?.pagination?.totalItems ?? nguoncMovies.length
+      const totalItems = Math.max(vsmovTotalItems + kkTotalItems + nguoncTotalItems, mergedMovies.length)
 
       const vsmovTotalPages = vsmovPag?.totalPages ?? 1
       const kkTotalPages = kkPag?.totalPages ?? (kkTotalItems > 0 ? Math.ceil(kkTotalItems / limit) : 1)
-      const totalPages = Math.max(vsmovTotalPages, kkTotalPages, mergedMovies.length > 0 ? 1 : 0)
+      const nguoncTotalPages = nguoncData?.pagination?.totalPages ?? 1
+      const totalPages = Math.max(vsmovTotalPages, kkTotalPages, nguoncTotalPages, mergedMovies.length > 0 ? 1 : 0)
 
       return {
         items: mergedMovies,

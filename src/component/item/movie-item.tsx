@@ -6,6 +6,7 @@ import type { MovieItem as MovieItemType } from '@/types/movie'
 import React, { useState } from 'react'
 import { getOphimImageMovie } from '@/utils/common'
 import SourceBadge from '@/component/item/source-badge'
+import { getMovieDetailHref } from '@/utils/movie-link'
 
 type Props = {
   movie: MovieItemType
@@ -53,13 +54,7 @@ export default function MovieItem({ movie, color, source, index, cdnDomain }: Re
 
   return (
     <Link
-      href={
-        source === 'nguonc'
-          ? `/nguonc/detail-movie/${movie.slug}`
-          : source
-            ? `/detail-movie/${movie.slug}?source=${source}`
-            : `/detail-movie/${movie.slug}`
-      }
+      href={getMovieDetailHref(movie.slug, source)}
       className='group block'
       style={{ '--accent': accent } as React.CSSProperties}
     >

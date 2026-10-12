@@ -23,8 +23,9 @@ export function mapMovieItemToMovie(item: MovieItems): Movie {
     slug: item.slug,
     origin_name: item.original_name,
     type: '', // API không có => set default hoặc map từ field khác nếu có
-    poster_url: item.poster_url,
-    thumb_url: item.thumb_url,
+    // NguonC đặt tên ngược quy ước của app: poster_url là ảnh ngang, thumb_url là ảnh dọc → hoán đổi
+    poster_url: item.thumb_url,
+    thumb_url: item.poster_url,
     sub_docquyen: false, // default
     time: item.time,
     episode_current: item.current_episode,
@@ -59,8 +60,9 @@ export function mapToDetailMovie(movie: MovieNguonc, episodes?: EpisodeNguonc[])
       content: movie.description ?? '',
       type: 'movie',
       status: 'Hoàn tất',
-      poster_url: movie.poster_url ?? '',
-      thumb_url: movie.thumb_url ?? '',
+      // Hoán đổi như mapMovieItemToMovie: NguonC poster_url = ngang, thumb_url = dọc
+      poster_url: movie.thumb_url ?? '',
+      thumb_url: movie.poster_url ?? '',
       is_copyright: false,
       sub_docquyen: false,
       chieurap: false,

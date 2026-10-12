@@ -174,10 +174,6 @@ export default function WatchPage() {
               <button
                 key={s}
                 onClick={() => {
-                  if (s === 'nguonc') {
-                    router.push(`/nguonc/detail-movie/${slug}`)
-                    return
-                  }
                   const params = new URLSearchParams(searchParams.toString())
                   params.set('source', s)
                   router.replace(`?${params.toString()}`)
@@ -293,10 +289,6 @@ export default function WatchPage() {
                     key={s}
                     onClick={() => {
                       if (s === source) return
-                      if (s === 'nguonc') {
-                        router.push(`/nguonc/detail-movie/${slug}`)
-                        return
-                      }
                       const params = new URLSearchParams(searchParams.toString())
                       params.set('source', s)
                       router.replace(`?${params.toString()}`)
@@ -672,10 +664,6 @@ export default function WatchPage() {
               key={s}
               onClick={() => {
                 if (s === source) return
-                if (s === 'nguonc') {
-                  router.push(`/nguonc/detail-movie/${slug}`)
-                  return
-                }
                 const params = new URLSearchParams(searchParams.toString())
                 params.set('source', s)
                 router.replace(`?${params.toString()}`)

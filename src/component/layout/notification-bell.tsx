@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/app/auth-provider'
+import { getMovieDetailHref } from '@/utils/movie-link'
 
 type Notification = {
   id: string
@@ -39,7 +40,7 @@ export default function NotificationBell() {
     queryFn: () => fetch('/api/notifications').then(r => r.json()),
     enabled: !!user,
     refetchInterval: 5 * 60 * 1000, // tự refetch mỗi 5 phút
-    staleTime: 60 * 1000,
+    staleTime: 60 * 1000
   })
 
   const notifications = data?.data ?? []
@@ -77,12 +78,7 @@ export default function NotificationBell() {
 
   const handleClickNotification = (slug: string, source?: string) => {
     setOpen(false)
-    if (source === 'nguonc') {
-      router.push(`/nguonc/detail-movie/${slug}`)
-    } else {
-      const sourceQuery = source ? `?source=${source}` : ''
-      router.push(`/detail-movie/${slug}${sourceQuery}`)
-    }
+    router.push(getMovieDetailHref(slug, source))
   }
 
   if (!user) return null
@@ -141,7 +137,10 @@ export default function NotificationBell() {
           >
             <span className='text-sm font-black text-white'>Thông báo</span>
             {unreadCount > 0 && (
-              <span className='text-[10px] font-bold px-2 py-0.5 rounded-full' style={{ background: 'var(--c-pink)', color: 'black' }}>
+              <span
+                className='text-[10px] font-bold px-2 py-0.5 rounded-full'
+                style={{ background: 'var(--c-pink)', color: 'black' }}
+              >
                 {unreadCount} mới
               </span>
             )}
@@ -169,9 +168,7 @@ export default function NotificationBell() {
                     style={{ background: notif.is_read ? 'transparent' : 'var(--c-pink)' }}
                   />
                   <div className='min-w-0 flex-1'>
-                    <p className='text-sm font-bold text-white truncate'>
-                      {notif.movie_name}
-                    </p>
+                    <p className='text-sm font-bold text-white truncate'>{notif.movie_name}</p>
                     <p className='text-xs text-white/50 mt-0.5'>
                       🎬 Ra tập mới: <span className='text-[var(--c-cyan)] font-semibold'>{notif.episode_name}</span>
                     </p>

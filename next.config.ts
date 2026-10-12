@@ -48,6 +48,11 @@ const nextConfig: NextConfig = {
       },
       {
         protocol: 'https',
+        hostname: 'img.nguonc.com',
+        pathname: '/**'
+      },
+      {
+        protocol: 'https',
         hostname: 'img.ophim.live',
         pathname: '/**'
       },
