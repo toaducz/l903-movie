@@ -14,6 +14,8 @@ import Loading from '@/component/status/loading'
 import Image from 'next/image'
 import thumbnail from '@/assets/gumaKe.png'
 import FavoriteButton from '@/component/interactive/favorite-button'
+import WatchedButton from '@/component/watched/watched-button'
+import WatchedIcon from '@/component/watched/watched-icon'
 import { saveViewHistory } from '@/utils/local-storage'
 import VideoPlayer from '@/component/player/custom-player'
 import { useAuth } from '@/app/auth-provider'
@@ -306,6 +308,32 @@ export default function WatchPage() {
             </div>
           </div>
 
+          {/* Hàng nút: XEM PHIM · Yêu thích · Đã xem (design handoff "Đã xem") */}
+          <div className='flex flex-col gap-3.5 sm:flex-row sm:flex-wrap sm:items-center sm:gap-4 mb-10'>
+            <button
+              type='button'
+              className='dx-b dx-b-pri w-full !h-[52px] sm:w-auto sm:!h-12'
+              onClick={() => {
+                const firstEp = data?.episodes?.[0]?.server_data?.[0]
+                if (firstEp) handleSelectEpisode(firstEp.link_embed, firstEp.link_m3u8, firstEp.name)
+                window.scrollTo({ top: 0, behavior: 'smooth' })
+              }}
+            >
+              <WatchedIcon name='play' size={16} />
+              XEM PHIM
+            </button>
+            <div className='grid grid-cols-2 gap-2.5 sm:flex sm:gap-4'>
+              <FavoriteButton
+                slug={movie?.slug}
+                image={movie?.poster_url}
+                name={movie.name}
+                source={source}
+                className='w-full !px-2.5 sm:w-auto sm:!px-[22px]'
+              />
+              <WatchedButton detail={data} source={source} className='w-full !px-2.5 sm:w-auto sm:!px-[22px]' />
+            </div>
+          </div>
+
           <div className='grid grid-cols-1 md:grid-cols-[320px_1fr] gap-10 items-start'>
             {/* Left Column: Poster + CTA */}
             <div className='flex flex-col gap-6'>
@@ -325,22 +353,6 @@ export default function WatchPage() {
                   alt={movie.name}
                   className='w-full h-auto object-cover'
                 />
-              </div>
-
-              <button
-                className='w-full py-3.5 rounded-xl font-black text-sm tracking-wider text-[var(--c-bg)] bg-[var(--c-pink)] hover:opacity-90 transition-all duration-150 cursor-pointer flex justify-center items-center gap-2 shadow-lg'
-                style={{ boxShadow: '5px 5px 0 var(--c-yel)' }}
-                onClick={() => {
-                  const firstEp = data?.episodes?.[0]?.server_data?.[0]
-                  if (firstEp) handleSelectEpisode(firstEp.link_embed, firstEp.link_m3u8, firstEp.name)
-                  window.scrollTo({ top: 0, behavior: 'smooth' })
-                }}
-              >
-                ▶ XEM PHIM
-              </button>
-
-              <div>
-                <FavoriteButton slug={movie?.slug} image={movie?.poster_url} name={movie.name} source={source} />
               </div>
 
               {/* Fast Info */}

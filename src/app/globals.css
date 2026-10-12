@@ -37,12 +37,15 @@
   --c-dim:   rgba(255,255,255,.55);
   --c-faint: rgba(255,255,255,.35);
   --c-line:  rgba(255,255,255,.10);
+  --c-ghost: rgba(255,255,255,.06);
+  --shadow-sticker: 3px 3px 0 var(--c-bg);
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-be-vietnam-pro);
+  --font-mono: var(--font-jetbrains-mono), ui-monospace, monospace;
 }
 
 body {

@@ -2,15 +2,17 @@
 
 import { useEffect, useState } from 'react'
 import { useAuth } from '@/app/auth-provider'
+import WatchedIcon from '@/component/watched/watched-icon'
 
 type FavoriteButtonProps = {
   slug: string
   name: string
   image: string
   source?: string
+  className?: string
 }
 
-export default function FavoriteButton({ slug, name, image, source }: FavoriteButtonProps) {
+export default function FavoriteButton({ slug, name, image, source, className = '' }: FavoriteButtonProps) {
   const { user } = useAuth()
   const [isFavorite, setIsFavorite] = useState<boolean | null>(null)
   const [loading, setLoading] = useState(false)
@@ -71,38 +73,26 @@ export default function FavoriteButton({ slug, name, image, source }: FavoriteBu
     }
   }
 
-  if (!user?.id) {
-    return (
-      <button
-        disabled
-        className='mt-6 px-6 py-3 bg-gray-400 rounded-lg text-white font-semibold w-full flex justify-center items-center gap-2 cursor-not-allowed'
-      >
-        Đăng nhập để yêu thích
-      </button>
-    )
-  }
-
-  if (isFavorite === null) {
-    return (
-      <button
-        disabled
-        className='mt-6 px-6 py-3 bg-gray-300 rounded-lg text-white font-semibold w-full flex justify-center items-center gap-2 cursor-not-allowed'
-      >
-        Đang tải...
-      </button>
-    )
-  }
-
-  const baseStyle =
-    'px-6 py-3 rounded-lg text-white font-semibold transition-all duration-300 transform shadow-lg w-full flex justify-center items-center gap-2 cursor-pointer'
-
-  const activeStyle = isFavorite
-    ? 'bg-red-500 hover:bg-red-600 hover:-translate-y-1 hover:shadow-red-500/50'
-    : 'bg-green-600 hover:bg-green-700 hover:-translate-y-1 hover:shadow-green-500/50'
+  // Giao diện theo design handoff "Đã xem": nút ghost cao 48px cùng hàng với XEM PHIM / Đã xem
+  const base = `dx-b ${className}`
+  const disabled = !user?.id || isFavorite === null || loading
 
   return (
-    <button onClick={toggleFavorite} disabled={loading} className={`${baseStyle} ${activeStyle}`}>
-      {loading ? 'Đợi chút...' : isFavorite ? 'Bỏ yêu thích' : 'Thêm vào yêu thích'}
+    <button
+      type='button'
+      onClick={toggleFavorite}
+      disabled={disabled}
+      title={!user?.id ? 'Đăng nhập để yêu thích' : undefined}
+      aria-pressed={Boolean(isFavorite)}
+      className={`${base} ${isFavorite ? 'dx-b-fav-on' : 'dx-b-gh'}`}
+      style={disabled ? { opacity: 0.7 } : undefined}
+    >
+      {loading ? (
+        <span className='dx-spin' />
+      ) : (
+        <WatchedIcon name='heart' size={18} strokeWidth={2.2} filled={Boolean(isFavorite)} />
+      )}
+      {isFavorite ? 'Đã thích' : 'Yêu thích'}
     </button>
   )
 }

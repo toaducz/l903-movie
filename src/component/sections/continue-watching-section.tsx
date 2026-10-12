@@ -6,6 +6,9 @@ import Link from 'next/link'
 import { getWatchingInProgress, removeFromViewHistory, WatchingItem } from '@/utils/local-storage'
 
 import { useQuery, useQueryClient } from '@tanstack/react-query'
+import SourceBadge from '@/component/item/source-badge'
+import WatchedIcon from '@/component/watched/watched-icon'
+import { continueKey, useFinishFromContinue } from '@/component/watched/use-finish-from-continue'
 
 type DbItem = {
   slug: string
@@ -23,7 +26,7 @@ export default function ContinueWatchingSection() {
   const scrollRef = useRef<HTMLDivElement>(null)
   const queryClient = useQueryClient()
 
-  const handleRemove = async (item: WatchingItem) => {
+  const removeFromContinue = async (item: WatchingItem) => {
     const isSame = (x: WatchingItem) => x.slug === item.slug && x.source === item.source
     // Ẩn ngay trên UI, xóa cả localStorage để không bị fallback hiện lại
     queryClient.setQueryData<WatchingItem[]>(['continue_watching'], prev => (prev ?? []).filter(x => !isSame(x)))
@@ -39,6 +42,11 @@ export default function ContinueWatchingSection() {
       queryClient.invalidateQueries({ queryKey: ['continue_watching'] })
     }
   }
+
+  const { finish, doneKey, leavingKey } = useFinishFromContinue({
+    removeFromContinue,
+    refreshContinue: () => queryClient.invalidateQueries({ queryKey: ['continue_watching'] })
+  })
 
   const { data: items = [], isLoading } = useQuery({
     queryKey: ['continue_watching'],
@@ -142,8 +150,10 @@ export default function ContinueWatchingSection() {
         <div ref={scrollRef} className='flex gap-4 overflow-x-auto pb-2 no-scrollbar'>
           {items.map((item, i) => (
             <div
-              key={`${item.slug}_${item.source}`}
-              className='relative flex-shrink-0 w-36 sm:w-44 group/card'
+              key={continueKey(item)}
+              className={`dx-cc relative flex-shrink-0 w-36 sm:w-44 group/card ${
+                leavingKey === continueKey(item) ? 'dx-cc-leaving' : ''
+              }`}
               style={{
                 transform: i % 2 === 0 ? 'rotate(-1deg)' : 'rotate(1deg)',
                 transition: 'transform .2s'
@@ -153,24 +163,30 @@ export default function ContinueWatchingSection() {
                 ((e.currentTarget as HTMLElement).style.transform = i % 2 === 0 ? 'rotate(-1deg)' : 'rotate(1deg)')
               }
             >
-              <button
-                type='button'
-                onClick={() => handleRemove(item)}
-                aria-label={`Xóa ${item.name} khỏi danh sách đang xem`}
-                title='Xóa khỏi danh sách'
-                className='cursor-pointer absolute top-9 right-2 z-20 h-6 w-6 flex items-center justify-center rounded-full bg-black/70 border border-white/20 text-white/80 hover:text-white hover:bg-[var(--c-pink)] sm:opacity-0 sm:group-hover/card:opacity-100 focus-visible:opacity-100 transition-opacity duration-200'
-              >
-                <svg
-                  xmlns='http://www.w3.org/2000/svg'
-                  className='h-3.5 w-3.5'
-                  fill='none'
-                  viewBox='0 0 24 24'
-                  stroke='currentColor'
-                  strokeWidth={3}
-                >
-                  <path strokeLinecap='round' strokeLinejoin='round' d='M6 18L18 6M6 6l12 12' />
-                </svg>
-              </button>
+              {/* Cụm nút góc trên trái: ✓ Xem xong · X Xoá (ngoài Link để không điều hướng) */}
+              {doneKey !== continueKey(item) && (
+                <div className='dx-cc-acts'>
+                  <button
+                    type='button'
+                    className='dx-ib dx-ib-ok'
+                    aria-label={`Đánh dấu xem xong ${item.name}`}
+                    onClick={() => finish(item)}
+                  >
+                    <WatchedIcon name='check' size={15} strokeWidth={3} />
+                    <span className='dx-tip' aria-hidden='true'>
+                      Xem xong
+                    </span>
+                  </button>
+                  <button
+                    type='button'
+                    className='dx-ib dx-ib-x'
+                    aria-label={`Xoá ${item.name} khỏi Đang xem`}
+                    onClick={() => removeFromContinue(item)}
+                  >
+                    <WatchedIcon name='x' size={13} strokeWidth={2.6} />
+                  </button>
+                </div>
+              )}
               <Link
                 href={`/detail-movie/${item.slug}?watch=1&ep=${encodeURIComponent(item.episodeName ?? '')}&t=${Math.floor(
                   item.progress
@@ -194,23 +210,20 @@ export default function ContinueWatchingSection() {
                   >
                     {item.percent}%
                   </span>
-                  {/* Source badge */}
-                  {item.source && (
-                    <span
-                      className='absolute top-2 left-2 text-[8px] font-black px-1.5 py-0.5 rounded-sm tracking-tighter uppercase opacity-80 z-10'
-                      style={{
-                        background:
-                          item.source === 'ophim' ? '#ff4d4f' : item.source === 'nguonc' ? '#52c41a' : '#1890ff',
-                        color: '#fff'
-                      }}
-                    >
-                      {item.source === 'nguonc' ? 'Nguồn C' : item.source}
-                    </span>
-                  )}
+                  {/* Source badge — góc dưới phải (góc trên trái dành cho cụm nút) */}
+                  <SourceBadge source={item.source} className='absolute bottom-2.5 right-2' />
                   {/* Progress bar */}
                   <div className='absolute bottom-0 left-0 right-0 h-1 bg-white/10'>
                     <div className='h-full' style={{ width: `${item.percent}%`, background: 'var(--c-pink)' }} />
                   </div>
+                  {doneKey === continueKey(item) && (
+                    <div className='dx-cc-done'>
+                      <span className='dx-bub'>
+                        <WatchedIcon name='check' size={26} strokeWidth={3} />
+                      </span>
+                      Đã xem xong!
+                    </div>
+                  )}
                   {/* Play hover */}
                   <div className='absolute inset-0 flex items-center justify-center opacity-0 group-hover/card:opacity-100 transition-opacity duration-200'>
                     <div className='bg-black/60 rounded-full p-2'>

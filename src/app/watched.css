@@ -1,0 +1,677 @@
+/* ============================================================
+   Tính năng "Đã xem" — style theo design_handoff_da_xem/da-xem.css
+   Chỉ chứa phần khó viết bằng Tailwind (pseudo-element, keyframes, trạng thái lồng nhau).
+   ============================================================ */
+
+/* ── Nút chung ─────────────────────────────────────────────── */
+.dx-b {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 48px;
+  padding: 0 22px;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 900;
+  border: 2px solid transparent;
+  color: #fff;
+  background: none;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    transform 0.15s,
+    box-shadow 0.15s,
+    border-color 0.15s,
+    color 0.15s,
+    background 0.15s,
+    opacity 0.15s;
+}
+.dx-b:disabled {
+  cursor: default;
+}
+.dx-b-pri {
+  background: var(--c-pink);
+  box-shadow: 5px 5px 0 var(--c-yel);
+}
+.dx-b-pri:hover:not(:disabled) {
+  transform: translate(-2px, -2px);
+  box-shadow: 7px 7px 0 var(--c-yel);
+}
+.dx-b-gh {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.15);
+  font-weight: 700;
+}
+.dx-b-gh:hover:not(:disabled) {
+  border-color: var(--c-cyan);
+  color: var(--c-cyan);
+}
+.dx-b-done {
+  background: rgba(34, 211, 238, 0.12);
+  border-color: var(--c-cyan);
+  color: var(--c-cyan);
+}
+.dx-b-done:hover:not(:disabled) {
+  background: var(--c-cyan);
+  color: var(--c-bg);
+  transform: rotate(-1.5deg) translate(-1px, -2px);
+  box-shadow: 4px 4px 0 var(--c-pink);
+}
+.dx-b-done .dx-sep {
+  opacity: 0.5;
+}
+.dx-b-done .dx-st {
+  color: var(--c-yel);
+}
+.dx-b-done:hover:not(:disabled) .dx-st {
+  color: var(--c-bg);
+}
+.dx-b-fav-on {
+  background: rgba(236, 72, 153, 0.14);
+  border-color: var(--c-pink);
+  color: var(--c-pink);
+}
+.dx-b-fav-on:hover:not(:disabled) {
+  background: var(--c-pink);
+  color: #fff;
+}
+.dx-b-yel {
+  background: var(--c-yel);
+  color: var(--c-bg);
+  box-shadow: 3px 3px 0 var(--c-pink);
+}
+.dx-b-yel:hover:not(:disabled) {
+  transform: translate(-1px, -1px) rotate(-1deg);
+  box-shadow: 5px 5px 0 var(--c-pink);
+}
+.dx-b-txt {
+  background: none;
+  color: var(--c-orange);
+  font-weight: 800;
+  padding: 0 6px;
+}
+.dx-b-txt:hover:not(:disabled) {
+  color: #fdba74;
+  text-decoration: underline;
+}
+.dx-b-dis,
+.dx-b:disabled.dx-b-dis {
+  opacity: 0.45;
+  box-shadow: none;
+  pointer-events: none;
+}
+.dx-b-sm {
+  height: 40px;
+  padding: 0 14px;
+  font-size: 13px;
+  border-radius: 10px;
+}
+
+.dx-spin {
+  width: 16px;
+  height: 16px;
+  border: 2.5px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: dx-sp 0.7s linear infinite;
+  flex-shrink: 0;
+}
+@keyframes dx-sp {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ── Thẻ "Đang xem dở": cụm nút ✓ / X ──────────────────────── */
+.dx-cc-acts {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 3;
+  display: flex;
+  gap: 8px;
+}
+.dx-ib {
+  position: relative;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  cursor: pointer;
+  color: #fff;
+  background: rgba(13, 10, 20, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  transition:
+    background 0.15s,
+    border-color 0.15s,
+    color 0.15s,
+    box-shadow 0.15s,
+    transform 0.15s;
+}
+.dx-ib::before {
+  content: '';
+  position: absolute;
+  inset: -4px;
+} /* vùng chạm 44px */
+.dx-ib-ok:hover,
+.dx-ib-ok:focus-visible {
+  background: var(--c-cyan);
+  border-color: var(--c-cyan);
+  color: var(--c-bg);
+  box-shadow: 3px 3px 0 var(--c-pink);
+  transform: rotate(-8deg);
+}
+.dx-ib-x:hover,
+.dx-ib-x:focus-visible {
+  background: var(--c-pink);
+  border-color: var(--c-pink);
+}
+.dx-tip {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: -4px;
+  background: var(--c-cyan);
+  color: var(--c-bg);
+  font-size: 11px;
+  font-weight: 800;
+  padding: 4px 8px;
+  border-radius: 6px;
+  white-space: nowrap;
+  transform: rotate(-2deg);
+  box-shadow: var(--shadow-sticker);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s;
+}
+.dx-ib-ok:hover .dx-tip,
+.dx-ib-ok:focus-visible .dx-tip {
+  opacity: 1;
+}
+
+/* Desktop có hover: ẩn cụm nút, hiện khi rê thẻ. Nút nhỏ 30px (vùng chạm vẫn 44px nhờ ::before) */
+@media (hover: hover) and (min-width: 640px) {
+  .dx-cc-acts {
+    gap: 6px;
+    opacity: 0;
+    transform: translateY(-4px);
+    transition:
+      opacity 0.15s,
+      transform 0.15s;
+  }
+  .dx-cc:hover .dx-cc-acts,
+  .dx-cc:focus-within .dx-cc-acts {
+    opacity: 1;
+    transform: none;
+  }
+  .dx-ib {
+    width: 30px;
+    height: 30px;
+  }
+  .dx-ib::before {
+    inset: -7px;
+  }
+}
+
+.dx-cc-done {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  background: rgba(13, 10, 20, 0.72);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  font-weight: 900;
+  font-size: 14px;
+  animation: dx-fade 0.15s ease-out;
+}
+.dx-bub {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--c-cyan);
+  color: var(--c-bg);
+  display: grid;
+  place-items: center;
+  box-shadow: 4px 4px 0 var(--c-pink);
+  transform: rotate(-8deg);
+}
+/* Thẻ rời hàng: thu bề ngang */
+.dx-cc-leaving {
+  overflow: hidden;
+  width: 0 !important;
+  min-width: 0 !important;
+  margin-right: -16px; /* bù gap của hàng */
+  opacity: 0;
+  transition:
+    width 0.25s ease,
+    margin 0.25s ease,
+    opacity 0.2s ease;
+}
+
+/* ── Popup chấm điểm ───────────────────────────────────────── */
+.dx-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: rgba(6, 4, 9, 0.72);
+  backdrop-filter: blur(3px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  animation: dx-fade 0.15s ease-out;
+}
+.dx-md {
+  width: 520px;
+  max-width: 100%;
+  max-height: calc(100dvh - 48px);
+  overflow-y: auto;
+  background: var(--c-card);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 24px;
+  box-shadow: 12px 12px 0 var(--c-pink);
+  padding: 28px;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  animation: dx-pop 0.2s ease-out;
+}
+.dx-md-x {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: var(--c-ghost);
+  border: 1px solid var(--c-line);
+  color: var(--c-dim);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  transition:
+    color 0.15s,
+    border-color 0.15s;
+}
+.dx-md-x:hover {
+  color: #fff;
+  border-color: var(--c-cyan);
+}
+
+.dx-sheet-wrap {
+  align-items: flex-end;
+  padding: 0;
+}
+.dx-sheet {
+  width: 100%;
+  max-height: 92dvh;
+  overflow-y: auto;
+  background: var(--c-card);
+  border-top: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 28px 28px 0 0;
+  padding: 10px 20px calc(28px + env(safe-area-inset-bottom));
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  box-shadow: 0 -6px 0 var(--c-pink);
+  animation: dx-sheet-in 0.25s cubic-bezier(0.2, 0.8, 0.2, 1);
+  touch-action: pan-y;
+}
+.dx-handle {
+  width: 44px;
+  height: 5px;
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.25);
+  margin: 0 auto;
+}
+
+/* Sao */
+.dx-stars {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+.dx-star {
+  width: 48px;
+  height: 48px;
+  display: grid;
+  place-items: center;
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  color: rgba(255, 255, 255, 0.28);
+  transition:
+    transform 0.12s,
+    color 0.12s;
+}
+.dx-star svg {
+  width: 36px;
+  height: 36px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linejoin: round;
+  transition:
+    fill 0.12s,
+    filter 0.12s;
+}
+.dx-star.on {
+  color: var(--c-yel);
+}
+.dx-star.on svg {
+  fill: var(--c-yel);
+  filter: drop-shadow(2px 2px 0 var(--c-pink));
+}
+.dx-star.pv {
+  color: var(--c-yel);
+}
+.dx-star.pv svg {
+  fill: rgba(251, 191, 36, 0.35);
+  filter: none;
+}
+.dx-star.cur {
+  transform: scale(1.18) rotate(-10deg);
+}
+.dx-star:focus-visible {
+  outline: 2px solid var(--c-cyan);
+  outline-offset: 2px;
+  border-radius: 10px;
+}
+.dx-sheet .dx-stars {
+  justify-content: space-between;
+  gap: 0;
+}
+.dx-sheet .dx-star {
+  width: 52px;
+  height: 52px;
+}
+.dx-sheet .dx-star svg {
+  width: 40px;
+  height: 40px;
+}
+
+.dx-slab {
+  margin-left: 10px;
+  font-size: 12px;
+  font-weight: 800;
+  padding: 6px 12px;
+  transform: rotate(-2deg);
+  box-shadow: var(--shadow-sticker);
+  white-space: nowrap;
+}
+.dx-slab.l0 {
+  background: var(--c-ghost);
+  color: var(--c-dim);
+  box-shadow: none;
+  transform: none;
+  border: 1px dashed rgba(255, 255, 255, 0.2);
+}
+.dx-slab.l1,
+.dx-slab.l2 {
+  background: var(--c-orange);
+  color: var(--c-bg);
+}
+.dx-slab.l3 {
+  background: var(--c-cyan);
+  color: var(--c-bg);
+}
+.dx-slab.l4 {
+  background: var(--c-yel);
+  color: var(--c-bg);
+}
+.dx-slab.l5 {
+  background: var(--c-pink);
+  color: #fff;
+}
+.dx-slab.ghost {
+  background: transparent;
+  border: 1px solid var(--c-yel);
+  color: var(--c-yel);
+  box-shadow: none;
+}
+.dx-sheet .dx-slab {
+  margin: 8px 0 0;
+}
+
+/* Ghi chú */
+.dx-ta {
+  position: relative;
+}
+.dx-ta textarea {
+  width: 100%;
+  height: 76px;
+  resize: none;
+  background: rgba(13, 10, 20, 0.6);
+  border: 1.5px solid rgba(255, 255, 255, 0.14);
+  border-radius: 14px;
+  color: #fff;
+  font:
+    500 14px/1.5 var(--font-be-vietnam-pro),
+    system-ui,
+    sans-serif;
+  padding: 12px 14px 26px;
+  outline: none;
+  transition:
+    border-color 0.15s,
+    box-shadow 0.15s;
+}
+.dx-ta textarea::placeholder {
+  color: var(--c-faint);
+}
+.dx-ta textarea:focus {
+  border-color: var(--c-cyan);
+  box-shadow: 3px 3px 0 var(--c-cyan);
+}
+.dx-cnt {
+  position: absolute;
+  right: 12px;
+  bottom: 10px;
+  font: 700 11px var(--font-mono);
+  color: var(--c-faint);
+  pointer-events: none;
+}
+.dx-cnt.warn {
+  color: var(--c-orange);
+}
+
+.dx-err {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: rgba(249, 115, 22, 0.12);
+  border: 1px solid rgba(249, 115, 22, 0.5);
+  color: #fed7aa;
+  font-size: 13px;
+  line-height: 1.45;
+}
+.dx-dis {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+/* ── Toast ─────────────────────────────────────────────────── */
+.dx-toast-wrap {
+  position: fixed;
+  z-index: 1100;
+  left: 12px;
+  right: 12px;
+  bottom: calc(24px + env(safe-area-inset-bottom));
+}
+@media (min-width: 640px) {
+  .dx-toast-wrap {
+    left: 32px;
+    right: auto;
+    bottom: 32px;
+    width: 420px;
+  }
+}
+.dx-toast {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  padding: 14px 14px 18px 16px;
+  background: var(--c-card);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 16px;
+  box-shadow: 5px 5px 0 var(--c-cyan);
+  overflow: hidden;
+  animation: dx-toast-in 0.2s ease-out;
+  touch-action: pan-y;
+}
+.dx-toast.del {
+  box-shadow: 5px 5px 0 var(--c-orange);
+}
+.dx-t-ic {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--c-cyan);
+  color: var(--c-bg);
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  transform: rotate(-8deg);
+}
+.dx-toast.del .dx-t-ic {
+  background: var(--c-orange);
+}
+.dx-t-undo {
+  height: 44px;
+  padding: 0 14px;
+  border-radius: 10px;
+  border: 1.5px solid var(--c-yel);
+  background: none;
+  color: var(--c-yel);
+  font-size: 13px;
+  font-weight: 900;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    color 0.15s;
+}
+.dx-t-undo:hover,
+.dx-t-undo:focus-visible {
+  background: var(--c-yel);
+  color: var(--c-bg);
+}
+.dx-t-x {
+  width: 44px;
+  height: 44px;
+  border: 0;
+  background: none;
+  color: var(--c-faint);
+  display: grid;
+  place-items: center;
+  padding: 0;
+  margin-left: -6px;
+  cursor: pointer;
+}
+.dx-t-x:hover {
+  color: #fff;
+}
+.dx-t-bar {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  height: 3px;
+  width: 100%;
+  background: var(--c-cyan);
+  transform-origin: left;
+  animation: dx-tm 5s linear forwards;
+}
+.dx-toast.del .dx-t-bar {
+  background: var(--c-orange);
+}
+.dx-toast:hover .dx-t-bar,
+.dx-toast:focus-within .dx-t-bar {
+  animation-play-state: paused;
+}
+
+/* ── Keyframes ─────────────────────────────────────────────── */
+@keyframes dx-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes dx-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+@keyframes dx-sheet-in {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+@keyframes dx-toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes dx-tm {
+  from {
+    transform: scaleX(1);
+  }
+  to {
+    transform: scaleX(0);
+  }
+}
+
+/* Tôn trọng prefers-reduced-motion: bỏ xoay / scale / trượt (vẫn giữ thanh đếm toast để tự ẩn) */
+@media (prefers-reduced-motion: reduce) {
+  .dx-b,
+  .dx-ib,
+  .dx-star,
+  .dx-cc-leaving,
+  .dx-tip {
+    transition: none !important;
+  }
+  .dx-b:hover,
+  .dx-ib:hover,
+  .dx-ib-ok:focus-visible,
+  .dx-star.cur {
+    transform: none !important;
+  }
+  .dx-md,
+  .dx-sheet,
+  .dx-toast,
+  .dx-backdrop,
+  .dx-cc-done {
+    animation: none !important;
+  }
+  .dx-bub,
+  .dx-t-ic,
+  .dx-slab,
+  .dx-tip {
+    transform: none !important;
+  }
+}
