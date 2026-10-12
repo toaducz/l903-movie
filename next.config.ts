@@ -55,6 +55,16 @@ const nextConfig: NextConfig = {
         protocol: 'https',
         hostname: 'ophim1.com',
         pathname: '/**'
+      },
+      {
+        protocol: 'https',
+        hostname: 'vsmov.com',
+        pathname: '/**'
+      },
+      {
+        protocol: 'https',
+        hostname: 'nguon.vsphim.com',
+        pathname: '/**'
       }
     ]
   },

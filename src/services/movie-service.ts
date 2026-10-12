@@ -36,6 +36,19 @@ import { getCategorySlug as ophimGetCategories } from '@/api/ophim/filter/get-ca
 import { getCountrySlug as ophimGetCountries } from '@/api/ophim/filter/get-country-slug'
 import { getSearchMovieListOphim as ophimSearch } from '@/api/ophim/search/get-search'
 
+import {
+  vsmovGetList,
+  vsmovGetByCategory,
+  vsmovGetByCountry,
+  vsmovGetByYear,
+  vsmovGetDetail,
+  vsmovGetCategories,
+  vsmovGetCountries,
+  vsmovSearch,
+  vsmovGetSuggestions
+} from '@/services/vsmov-service'
+import { VSMOV_TYPELISTS } from '@/api/vsmov/vsmov-api'
+
 import type { Movie as KKMovie } from '@/api/kkphim/get-update-movie'
 import type { DetailMovie as KKDetailMovie } from '@/api/kkphim/get-detail-movie'
 
@@ -134,6 +147,8 @@ export const getLatestMovies = ({
 } = {}) => {
   const resolvedSource = source ?? DEFAULT_MOVIE_SOURCE
 
+  if (resolvedSource === 'vsmov') return vsmovGetList({ typelist: 'phim-moi-cap-nhat', page })
+
   if (resolvedSource === 'ophim') {
     return queryOptions<MovieListResult>({
       queryKey: ['movie-service-v3', 'latest', page, resolvedSource],
@@ -190,6 +205,11 @@ export const getListMovies = ({
   source
 }: ListMovieParams) => {
   const resolvedSource = source ?? DEFAULT_MOVIE_SOURCE
+
+  // VSMOV chỉ có một số danh sách và bỏ qua filter country → các trường hợp còn lại dùng KKPhim
+  if (resolvedSource === 'vsmov' && VSMOV_TYPELISTS.has(typelist) && !country) {
+    return vsmovGetList({ typelist, page })
+  }
 
   if (resolvedSource === 'ophim') {
     return queryOptions<MovieListResult>({
@@ -261,6 +281,8 @@ export const getMoviesByCategory = ({
   source
 }: ListMovieByCategoryParams) => {
   const resolvedSource = source ?? DEFAULT_MOVIE_SOURCE
+
+  if (resolvedSource === 'vsmov') return vsmovGetByCategory({ category, page, country, year })
 
   if (resolvedSource === 'ophim') {
     return queryOptions<MovieListResult>({
@@ -357,6 +379,8 @@ export const getMoviesByCountry = ({
 }: ListMovieByCountryParams) => {
   const resolvedSource = source ?? DEFAULT_MOVIE_SOURCE
 
+  if (resolvedSource === 'vsmov') return vsmovGetByCountry({ country, page, category, year })
+
   if (resolvedSource === 'ophim') {
     return queryOptions<MovieListResult>({
       queryKey: [
@@ -450,6 +474,8 @@ export const getMoviesByYear = ({
 }: ListMovieByYearParams) => {
   const resolvedSource = source ?? DEFAULT_MOVIE_SOURCE
 
+  if (resolvedSource === 'vsmov') return vsmovGetByYear({ year, page, category, country })
+
   if (resolvedSource === 'ophim') {
     return queryOptions<MovieListResult>({
       queryKey: [
@@ -522,6 +548,8 @@ export const getMoviesByYear = ({
 export const getMovieDetail = ({ slug, source }: { slug: string; source?: MovieSource }) => {
   const resolvedSource = source ?? DEFAULT_MOVIE_SOURCE
 
+  if (resolvedSource === 'vsmov') return vsmovGetDetail({ slug })
+
   if (resolvedSource === 'ophim') {
     return queryOptions<MovieDetail>({
       queryKey: ['movie-service-v3', 'detail', slug, resolvedSource],
@@ -551,6 +579,8 @@ export const getMovieDetail = ({ slug, source }: { slug: string; source?: MovieS
 export const getCategories = (source?: MovieSource) => {
   const resolvedSource = source ?? DEFAULT_MOVIE_SOURCE
 
+  if (resolvedSource === 'vsmov') return vsmovGetCategories()
+
   if (resolvedSource === 'ophim') {
     return queryOptions<CategoryItem[]>({
       queryKey: ['movie-service-v3', 'categories', resolvedSource],
@@ -579,6 +609,8 @@ export const getCategories = (source?: MovieSource) => {
 
 export const getCountries = (source?: MovieSource) => {
   const resolvedSource = source ?? DEFAULT_MOVIE_SOURCE
+
+  if (resolvedSource === 'vsmov') return vsmovGetCountries()
 
   if (resolvedSource === 'ophim') {
     return queryOptions<CountryItem[]>({
@@ -618,6 +650,8 @@ export const searchMovies = ({
   source
 }: SearchMovieParams) => {
   const resolvedSource = source ?? DEFAULT_MOVIE_SOURCE
+
+  if (resolvedSource === 'vsmov') return vsmovSearch({ keyword, page, limit })
 
   if (resolvedSource === 'ophim') {
     return queryOptions<CombinedSearchResult>({
@@ -722,6 +756,8 @@ export const getSearchSuggestions = ({
 }) => {
   const resolvedSource = source ?? DEFAULT_MOVIE_SOURCE
 
+  if (resolvedSource === 'vsmov') return vsmovGetSuggestions({ keyword, limit })
+
   if (resolvedSource === 'ophim') {
     return queryOptions<MovieItem[]>({
       queryKey: ['movie-service-v3', 'suggestions', keyword, limit, resolvedSource],
@@ -751,8 +787,8 @@ export const getSearchSuggestions = ({
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 11. getCombinedSearch (gộp KKPhim + OPhim, dùng cho search result page)
-//     KKPhim ưu tiên, OPhim bổ sung các phim không trùng slug
+// 11. getCombinedSearch (gộp VSMOV + KKPhim + OPhim, dùng cho search result page)
+//     VSMOV ưu tiên, các nguồn sau bổ sung phim không trùng slug
 // ─────────────────────────────────────────────────────────────────────────────
 
 export const getCombinedSearch = ({
@@ -781,8 +817,10 @@ export const getCombinedSearch = ({
     queryFn: async (context: QueryFunctionContext): Promise<CombinedSearchResult> => {
       const kkOpts = kkSearch({ keyword, page, limit, category, country, year, sort_field, sort_type })
       const ophimOpts = ophimSearch({ keyword, page, limit, category, country, sort_field, sort_type })
+      const vsmovOpts = vsmovSearch({ keyword, page, limit })
 
-      const [kkRes, ophimRes] = await Promise.allSettled([
+      const [vsmovRes, kkRes, ophimRes] = await Promise.allSettled([
+        callQueryFn<CombinedSearchResult>(vsmovOpts.queryFn, context),
         callQueryFn<{
           data?: {
             items?: KKMovie[]
@@ -795,6 +833,7 @@ export const getCombinedSearch = ({
         callQueryFn<{ movies?: MovieItem[]; pagination?: Pagination }>(ophimOpts.queryFn, context)
       ])
 
+      const vsmovData = vsmovRes.status === 'fulfilled' ? vsmovRes.value : null
       const kkData = kkRes.status === 'fulfilled' ? kkRes.value?.data : null
       const ophimData = ophimRes.status === 'fulfilled' ? ophimRes.value : null
 
@@ -805,23 +844,32 @@ export const getCombinedSearch = ({
         source: 'ophim' as MovieSource
       }))
 
-      // KKPhim ưu tiên — OPhim bổ sung phim không trùng slug
-      const kkSlugs = new Set(kkMovies.map(m => m.slug))
-      const mergedMovies = [...kkMovies, ...ophimMovies.filter(m => !kkSlugs.has(m.slug))]
-      const allMovies = [...kkMovies, ...ophimMovies]
+      const vsmovMovies: MovieItem[] = vsmovData?.items ?? []
+
+      // VSMOV ưu tiên → KKPhim → OPhim, bỏ phim trùng slug
+      const allMovies = [...vsmovMovies, ...kkMovies, ...ophimMovies]
+      const seenSlugs = new Set<string>()
+      const mergedMovies = allMovies.filter(m => {
+        if (seenSlugs.has(m.slug)) return false
+        seenSlugs.add(m.slug)
+        return true
+      })
       const hasDuplicates = allMovies.length > mergedMovies.length
 
       const kkPag = kkData?.params?.pagination
       const ophimPag = ophimData?.pagination as Pagination | undefined
 
+      const vsmovPag = vsmovData?.pagination
+      const vsmovTotalItems = vsmovPag?.totalItems ?? vsmovMovies.length
       const kkTotalItems = kkPag?.totalItems ?? kkMovies.length
       const ophimTotalItems = ophimPag?.totalItems ?? ophimMovies.length
-      const calculatedTotal = (kkTotalItems > 0 || ophimTotalItems > 0) ? (kkTotalItems + ophimTotalItems) : mergedMovies.length
+      const calculatedTotal = vsmovTotalItems + kkTotalItems + ophimTotalItems
       const totalItems = Math.max(calculatedTotal, mergedMovies.length)
 
       const kkTotalPages = kkPag?.totalPages ?? (kkTotalItems > 0 ? Math.ceil(kkTotalItems / limit) : 1)
       const ophimTotalPages = ophimPag?.totalPages ?? (ophimTotalItems > 0 ? Math.ceil(ophimTotalItems / limit) : 1)
-      const totalPages = Math.max(kkTotalPages, ophimTotalPages, mergedMovies.length > 0 ? 1 : 0)
+      const vsmovTotalPages = vsmovPag?.totalPages ?? 1
+      const totalPages = Math.max(vsmovTotalPages, kkTotalPages, ophimTotalPages, mergedMovies.length > 0 ? 1 : 0)
 
       return {
         items: mergedMovies,

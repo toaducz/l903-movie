@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { kkphim, nguonc, ophim, ophimV1, proxyApiUrl } from '@/utils/env'
+import { kkphim, nguonc, ophim, ophimV1, proxyApiUrl, vsmov } from '@/utils/env'
 
 const getHostName = (urlStr: string): string => {
   try {
@@ -16,6 +16,7 @@ const ENV_DOMAINS = [
   getHostName(nguonc),
   getHostName(ophim),
   getHostName(ophimV1),
+  getHostName(vsmov),
   getHostName(proxyApiUrl)
 ].filter(Boolean)
 

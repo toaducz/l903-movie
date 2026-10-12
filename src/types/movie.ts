@@ -1,4 +1,4 @@
-export type MovieSource = 'kkphim' | 'ophim' | 'nguonc'
+export type MovieSource = 'kkphim' | 'ophim' | 'nguonc' | 'vsmov'
 
 export interface CategoryItem {
   id: string

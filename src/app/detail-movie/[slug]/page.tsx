@@ -19,6 +19,7 @@ import VideoPlayer from '@/component/player/custom-player'
 import { useAuth } from '@/app/auth-provider'
 import MovieReview from '@/component/interactive/movie-review'
 import type { SubtitleParams, SubtitleCue } from '@/types/subtitle'
+import type { MovieSource } from '@/types/movie'
 import { DownloadModal } from '@/component/interactive/download-modal'
 
 const AUTOPLAY_COUNTDOWN = 5
@@ -29,9 +30,7 @@ export default function WatchPage() {
   const searchParams = useSearchParams()
   const { user } = useAuth()
   const source = searchParams.get('source') ?? DEFAULT_MOVIE_SOURCE
-  const { data, isLoading, isError } = useQuery(
-    getMovieDetail({ slug: String(slug), source: source as 'kkphim' | 'ophim' | 'nguonc' })
-  )
+  const { data, isLoading, isError } = useQuery(getMovieDetail({ slug: String(slug), source: source as MovieSource }))
   const [selectedEpisode, setSelectedEpisode] = useState<string | null>(null)
   const [useBackup, setUseBackup] = useState<string | null>(null)
   const [useBackupPlayer, setUseBackupPlayer] = useState(false)
@@ -176,14 +175,14 @@ export default function WatchPage() {
                 <button
                   key={s}
                   onClick={() => {
-                  if (s === 'nguonc') {
-                    router.push(`/nguonc/detail-movie/${slug}`)
-                    return
-                  }
-                  const params = new URLSearchParams(searchParams.toString())
-                  params.set('source', s)
-                  router.replace(`?${params.toString()}`)
-                }}
+                    if (s === 'nguonc') {
+                      router.push(`/nguonc/detail-movie/${slug}`)
+                      return
+                    }
+                    const params = new URLSearchParams(searchParams.toString())
+                    params.set('source', s)
+                    router.replace(`?${params.toString()}`)
+                  }}
                   className='w-full py-3 rounded-xl font-bold text-sm bg-white/5 border border-white/10 hover:bg-white/10 hover:text-[var(--c-cyan)] transition-all cursor-pointer uppercase'
                 >
                   TÌM Ở {s}
@@ -206,6 +205,9 @@ export default function WatchPage() {
   // const backupIndex = flatEpisodes.findIndex(ep => ep.link_m3u8 === selectedEpisode)
   const episodeToPlay = flatEpisodes[currentIndex]
   const movie = data.movie
+  // Nguồn chỉ có link embed (VD: VSMOV) → không có m3u8 cho player chính, phát thẳng bằng iframe
+  const hasM3u8 = Boolean(episodeToPlay?.link_m3u8)
+  const showIframePlayer = useBackupPlayer || !hasM3u8
 
   const handleSelectEpisode = (ep: string, backup: string, epName?: string) => {
     setSelectedEpisode(ep)
@@ -480,17 +482,19 @@ export default function WatchPage() {
               </div>
 
               <div className='flex flex-wrap justify-center gap-3 py-3 bg-white/2'>
-                <button
-                  onClick={() => setUseBackupPlayer(prev => !prev)}
-                  className={`px-4 py-1.5 text-xs font-bold rounded-full transition cursor-pointer border
+                {hasM3u8 && (
+                  <button
+                    onClick={() => setUseBackupPlayer(prev => !prev)}
+                    className={`px-4 py-1.5 text-xs font-bold rounded-full transition cursor-pointer border
                     ${
                       useBackupPlayer
                         ? 'bg-[var(--c-yel)] text-[var(--c-bg)] border-[var(--c-yel)]'
                         : 'bg-transparent text-[var(--c-cyan)] border-[var(--c-cyan)] hover:bg-[var(--c-cyan)]/10'
                     }`}
-                >
-                  {useBackupPlayer ? '⚡ DỰ PHÒNG - ĐỔI VỀ SERVER CHÍNH' : '⇄ DÙNG LINK DỰ PHÒNG (CÓ QUẢNG CÁO)'}
-                </button>
+                  >
+                    {useBackupPlayer ? '⚡ DỰ PHÒNG - ĐỔI VỀ SERVER CHÍNH' : '⇄ DÙNG LINK DỰ PHÒNG (CÓ QUẢNG CÁO)'}
+                  </button>
+                )}
 
                 {episodeToPlay?.link_m3u8 && (
                   <button
@@ -504,7 +508,7 @@ export default function WatchPage() {
 
               {/* Wrapper giữ tỉ lệ 16:9 */}
               <div className='relative pt-[56.25%] bg-black'>
-                {!useBackupPlayer ? (
+                {!showIframePlayer ? (
                   <VideoPlayer
                     progressKey={`${slug}_${episodeToPlay.name}`}
                     initialTime={tParam}
