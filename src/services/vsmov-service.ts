@@ -34,8 +34,10 @@ function mapVsmovItem(m: VsmovListItem): MovieItem {
     origin_name: m.origin_name,
     // VSMOV không trả các trường này ở danh sách — để trống, MovieItem card tự ẩn badge
     type: m.tmdb?.type === 'tv' ? 'series' : m.tmdb?.type === 'movie' ? 'single' : '',
-    poster_url: m.poster_url ?? '',
-    thumb_url: m.thumb_url ?? '',
+    // VSMOV (kế thừa OPhim) đặt tên ngược KKPhim: poster_url là ảnh ngang, thumb_url là ảnh dọc
+    // → hoán đổi để khớp quy ước của app (poster_url = dọc 2:3, thumb_url = ngang 16:9)
+    poster_url: m.thumb_url ?? '',
+    thumb_url: m.poster_url ?? '',
     sub_docquyen: false,
     time: '',
     episode_current: '',
@@ -90,8 +92,9 @@ function mapVsmovDetail(d: VsmovDetailResponse): MovieDetail {
       content: m.content ?? '',
       type: m.type,
       status: m.status,
-      poster_url: m.poster_url ?? '',
-      thumb_url: m.thumb_url ?? '',
+      // Hoán đổi như mapVsmovItem: VSMOV poster_url = ngang, thumb_url = dọc
+      poster_url: m.thumb_url ?? '',
+      thumb_url: m.poster_url ?? '',
       is_copyright: false,
       sub_docquyen: m.sub_docquyen ?? false,
       chieurap: m.chieurap ?? false,
