@@ -1,5 +1,5 @@
 import { queryOptions, QueryFunctionContext } from '@tanstack/react-query'
-import { DEFAULT_MOVIE_SOURCE } from '@/utils/env'
+import { resolveMovieSource } from '@/utils/env'
 import type {
   MovieSource,
   MovieItem,
@@ -145,9 +145,11 @@ export const getLatestMovies = ({
   limit?: number
   source?: MovieSource
 } = {}) => {
-  const resolvedSource = source ?? DEFAULT_MOVIE_SOURCE
+  const resolvedSource = resolveMovieSource(source)
 
-  if (resolvedSource === 'vsmov') return vsmovGetList({ typelist: 'phim-moi-cap-nhat', page })
+  // "phim-moi-cap-nhat" của VSMOV xếp theo ngày đăng, lẫn rất nhiều phim cũ được đăng bù
+  // → lấy phim ra mắt năm nay (vẫn xếp theo mới cập nhật) cho đúng nghĩa "mới ra lò"
+  if (resolvedSource === 'vsmov') return vsmovGetByYear({ year: String(new Date().getFullYear()), page })
 
   if (resolvedSource === 'ophim') {
     return queryOptions<MovieListResult>({
@@ -204,7 +206,7 @@ export const getListMovies = ({
   sort_lang,
   source
 }: ListMovieParams) => {
-  const resolvedSource = source ?? DEFAULT_MOVIE_SOURCE
+  const resolvedSource = resolveMovieSource(source)
 
   // VSMOV chỉ có một số danh sách và bỏ qua filter country → các trường hợp còn lại dùng KKPhim
   if (resolvedSource === 'vsmov' && VSMOV_TYPELISTS.has(typelist) && !country) {
@@ -280,7 +282,7 @@ export const getMoviesByCategory = ({
   sort_lang,
   source
 }: ListMovieByCategoryParams) => {
-  const resolvedSource = source ?? DEFAULT_MOVIE_SOURCE
+  const resolvedSource = resolveMovieSource(source)
 
   if (resolvedSource === 'vsmov') return vsmovGetByCategory({ category, page, country, year })
 
@@ -377,7 +379,7 @@ export const getMoviesByCountry = ({
   sort_lang,
   source
 }: ListMovieByCountryParams) => {
-  const resolvedSource = source ?? DEFAULT_MOVIE_SOURCE
+  const resolvedSource = resolveMovieSource(source)
 
   if (resolvedSource === 'vsmov') return vsmovGetByCountry({ country, page, category, year })
 
@@ -472,7 +474,7 @@ export const getMoviesByYear = ({
   sort_lang,
   source
 }: ListMovieByYearParams) => {
-  const resolvedSource = source ?? DEFAULT_MOVIE_SOURCE
+  const resolvedSource = resolveMovieSource(source)
 
   if (resolvedSource === 'vsmov') return vsmovGetByYear({ year, page, category, country })
 
@@ -513,7 +515,18 @@ export const getMoviesByYear = ({
 
   // Default: kkphim
   return queryOptions<MovieListResult>({
-    queryKey: ['movie-service-v3', 'by-year', year, page, limit, category, country, sort_field, sort_type, resolvedSource],
+    queryKey: [
+      'movie-service-v3',
+      'by-year',
+      year,
+      page,
+      limit,
+      category,
+      country,
+      sort_field,
+      sort_type,
+      resolvedSource
+    ],
     queryFn: async (context: QueryFunctionContext): Promise<MovieListResult> => {
       const opts = kkGetByYear({ year, page, limit, category, country, sort_field, sort_type, sort_lang })
       const res = await callQueryFn<{
@@ -546,7 +559,7 @@ export const getMoviesByYear = ({
 // ─────────────────────────────────────────────────────────────────────────────
 
 export const getMovieDetail = ({ slug, source }: { slug: string; source?: MovieSource }) => {
-  const resolvedSource = source ?? DEFAULT_MOVIE_SOURCE
+  const resolvedSource = resolveMovieSource(source)
 
   if (resolvedSource === 'vsmov') return vsmovGetDetail({ slug })
 
@@ -577,7 +590,7 @@ export const getMovieDetail = ({ slug, source }: { slug: string; source?: MovieS
 // ─────────────────────────────────────────────────────────────────────────────
 
 export const getCategories = (source?: MovieSource) => {
-  const resolvedSource = source ?? DEFAULT_MOVIE_SOURCE
+  const resolvedSource = resolveMovieSource(source)
 
   if (resolvedSource === 'vsmov') return vsmovGetCategories()
 
@@ -608,7 +621,7 @@ export const getCategories = (source?: MovieSource) => {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export const getCountries = (source?: MovieSource) => {
-  const resolvedSource = source ?? DEFAULT_MOVIE_SOURCE
+  const resolvedSource = resolveMovieSource(source)
 
   if (resolvedSource === 'vsmov') return vsmovGetCountries()
 
@@ -649,7 +662,7 @@ export const searchMovies = ({
   sort_type,
   source
 }: SearchMovieParams) => {
-  const resolvedSource = source ?? DEFAULT_MOVIE_SOURCE
+  const resolvedSource = resolveMovieSource(source)
 
   if (resolvedSource === 'vsmov') return vsmovSearch({ keyword, page, limit })
 
@@ -720,9 +733,7 @@ export const searchMovies = ({
         }
       }>(opts.queryFn, context)
       const cdnDomain = res?.data?.APP_DOMAIN_CDN_IMAGE
-      const items: MovieItem[] = (res?.data?.items ?? []).map(m =>
-        mapKKMovieToItem(m, cdnDomain, 'kkphim')
-      )
+      const items: MovieItem[] = (res?.data?.items ?? []).map(m => mapKKMovieToItem(m, cdnDomain, 'kkphim'))
       const kkPag = res?.data?.params?.pagination
       return {
         items,
@@ -754,7 +765,7 @@ export const getSearchSuggestions = ({
   limit?: number
   source?: MovieSource
 }) => {
-  const resolvedSource = source ?? DEFAULT_MOVIE_SOURCE
+  const resolvedSource = resolveMovieSource(source)
 
   if (resolvedSource === 'vsmov') return vsmovGetSuggestions({ keyword, limit })
 
@@ -787,7 +798,7 @@ export const getSearchSuggestions = ({
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 11. getCombinedSearch (gộp VSMOV + KKPhim + OPhim, dùng cho search result page)
+// 11. getCombinedSearch (gộp VSMOV + KKPhim, dùng cho search result page)
 //     VSMOV ưu tiên, các nguồn sau bổ sung phim không trùng slug
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -816,38 +827,35 @@ export const getCombinedSearch = ({
     ],
     queryFn: async (context: QueryFunctionContext): Promise<CombinedSearchResult> => {
       const kkOpts = kkSearch({ keyword, page, limit, category, country, year, sort_field, sort_type })
-      const ophimOpts = ophimSearch({ keyword, page, limit, category, country, sort_field, sort_type })
       const vsmovOpts = vsmovSearch({ keyword, page, limit })
 
-      const [vsmovRes, kkRes, ophimRes] = await Promise.allSettled([
+      const [vsmovRes, kkRes] = await Promise.allSettled([
         callQueryFn<CombinedSearchResult>(vsmovOpts.queryFn, context),
         callQueryFn<{
           data?: {
             items?: KKMovie[]
             APP_DOMAIN_CDN_IMAGE?: string
             params?: {
-              pagination?: { currentPage?: number; totalPages?: number; totalItems?: number; totalItemsPerPage?: number }
+              pagination?: {
+                currentPage?: number
+                totalPages?: number
+                totalItems?: number
+                totalItemsPerPage?: number
+              }
             }
           }
-        }>(kkOpts.queryFn, context),
-        callQueryFn<{ movies?: MovieItem[]; pagination?: Pagination }>(ophimOpts.queryFn, context)
+        }>(kkOpts.queryFn, context)
       ])
 
       const vsmovData = vsmovRes.status === 'fulfilled' ? vsmovRes.value : null
       const kkData = kkRes.status === 'fulfilled' ? kkRes.value?.data : null
-      const ophimData = ophimRes.status === 'fulfilled' ? ophimRes.value : null
 
       const cdnDomain = kkData?.APP_DOMAIN_CDN_IMAGE
-      const kkMovies: MovieItem[] = (kkData?.items ?? []).map(m => mapKKMovieToItem(m, cdnDomain, 'kkphim'))
-      const ophimMovies: MovieItem[] = (ophimData?.movies ?? []).map((m: MovieItem) => ({
-        ...m,
-        source: 'ophim' as MovieSource
-      }))
-
       const vsmovMovies: MovieItem[] = vsmovData?.items ?? []
+      const kkMovies: MovieItem[] = (kkData?.items ?? []).map(m => mapKKMovieToItem(m, cdnDomain, 'kkphim'))
 
-      // VSMOV ưu tiên → KKPhim → OPhim, bỏ phim trùng slug
-      const allMovies = [...vsmovMovies, ...kkMovies, ...ophimMovies]
+      // VSMOV ưu tiên → KKPhim bổ sung, bỏ phim trùng slug
+      const allMovies = [...vsmovMovies, ...kkMovies]
       const seenSlugs = new Set<string>()
       const mergedMovies = allMovies.filter(m => {
         if (seenSlugs.has(m.slug)) return false
@@ -856,20 +864,16 @@ export const getCombinedSearch = ({
       })
       const hasDuplicates = allMovies.length > mergedMovies.length
 
-      const kkPag = kkData?.params?.pagination
-      const ophimPag = ophimData?.pagination as Pagination | undefined
-
       const vsmovPag = vsmovData?.pagination
+      const kkPag = kkData?.params?.pagination
+
       const vsmovTotalItems = vsmovPag?.totalItems ?? vsmovMovies.length
       const kkTotalItems = kkPag?.totalItems ?? kkMovies.length
-      const ophimTotalItems = ophimPag?.totalItems ?? ophimMovies.length
-      const calculatedTotal = vsmovTotalItems + kkTotalItems + ophimTotalItems
-      const totalItems = Math.max(calculatedTotal, mergedMovies.length)
+      const totalItems = Math.max(vsmovTotalItems + kkTotalItems, mergedMovies.length)
 
-      const kkTotalPages = kkPag?.totalPages ?? (kkTotalItems > 0 ? Math.ceil(kkTotalItems / limit) : 1)
-      const ophimTotalPages = ophimPag?.totalPages ?? (ophimTotalItems > 0 ? Math.ceil(ophimTotalItems / limit) : 1)
       const vsmovTotalPages = vsmovPag?.totalPages ?? 1
-      const totalPages = Math.max(vsmovTotalPages, kkTotalPages, ophimTotalPages, mergedMovies.length > 0 ? 1 : 0)
+      const kkTotalPages = kkPag?.totalPages ?? (kkTotalItems > 0 ? Math.ceil(kkTotalItems / limit) : 1)
+      const totalPages = Math.max(vsmovTotalPages, kkTotalPages, mergedMovies.length > 0 ? 1 : 0)
 
       return {
         items: mergedMovies,

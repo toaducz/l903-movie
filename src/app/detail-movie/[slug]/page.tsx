@@ -4,7 +4,7 @@ import React, { useState, useEffect, useMemo } from 'react'
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
 import { getMovieDetail } from '@/services/movie-service'
-import { DEFAULT_MOVIE_SOURCE } from '@/utils/env'
+import { resolveMovieSource } from '@/utils/env'
 import { getSubtitles } from '@/api/proxy/get-subtitles'
 import EpisodeList from '@/component/interactive/episode-list'
 import SubtitleBadges from '@/component/interactive/subtitle-badges'
@@ -19,18 +19,19 @@ import VideoPlayer from '@/component/player/custom-player'
 import { useAuth } from '@/app/auth-provider'
 import MovieReview from '@/component/interactive/movie-review'
 import type { SubtitleParams, SubtitleCue } from '@/types/subtitle'
-import type { MovieSource } from '@/types/movie'
 import { DownloadModal } from '@/component/interactive/download-modal'
 
 const AUTOPLAY_COUNTDOWN = 5
+// OPhim đã chuyển thành VSMOV nên không còn nút OPhim riêng
+const SWITCHABLE_SOURCES = ['vsmov', 'kkphim', 'nguonc'] as const
 
 export default function WatchPage() {
   const { slug } = useParams()
   const router = useRouter()
   const searchParams = useSearchParams()
   const { user } = useAuth()
-  const source = searchParams.get('source') ?? DEFAULT_MOVIE_SOURCE
-  const { data, isLoading, isError } = useQuery(getMovieDetail({ slug: String(slug), source: source as MovieSource }))
+  const source = resolveMovieSource(searchParams.get('source'))
+  const { data, isLoading, isError } = useQuery(getMovieDetail({ slug: String(slug), source }))
   const [selectedEpisode, setSelectedEpisode] = useState<string | null>(null)
   const [useBackup, setUseBackup] = useState<string | null>(null)
   const [useBackupPlayer, setUseBackupPlayer] = useState(false)
@@ -169,25 +170,23 @@ export default function WatchPage() {
             <strong className='text-white uppercase'>{source}</strong>. Hãy thử tìm ở các nguồn dự phòng khác bên dưới:
           </p>
           <div className='flex flex-col gap-3'>
-            {['kkphim', 'ophim', 'nguonc']
-              .filter(s => s !== source)
-              .map(s => (
-                <button
-                  key={s}
-                  onClick={() => {
-                    if (s === 'nguonc') {
-                      router.push(`/nguonc/detail-movie/${slug}`)
-                      return
-                    }
-                    const params = new URLSearchParams(searchParams.toString())
-                    params.set('source', s)
-                    router.replace(`?${params.toString()}`)
-                  }}
-                  className='w-full py-3 rounded-xl font-bold text-sm bg-white/5 border border-white/10 hover:bg-white/10 hover:text-[var(--c-cyan)] transition-all cursor-pointer uppercase'
-                >
-                  TÌM Ở {s}
-                </button>
-              ))}
+            {SWITCHABLE_SOURCES.filter(s => s !== source).map(s => (
+              <button
+                key={s}
+                onClick={() => {
+                  if (s === 'nguonc') {
+                    router.push(`/nguonc/detail-movie/${slug}`)
+                    return
+                  }
+                  const params = new URLSearchParams(searchParams.toString())
+                  params.set('source', s)
+                  router.replace(`?${params.toString()}`)
+                }}
+                className='w-full py-3 rounded-xl font-bold text-sm bg-white/5 border border-white/10 hover:bg-white/10 hover:text-[var(--c-cyan)] transition-all cursor-pointer uppercase'
+              >
+                TÌM Ở {s}
+              </button>
+            ))}
           </div>
           <button
             onClick={() => router.push('/')}
@@ -289,7 +288,7 @@ export default function WatchPage() {
               {/* Nút Đổi Nguồn (Source Switcher) */}
               <div className='mt-4 flex flex-wrap gap-2 items-center'>
                 <span className='text-xs text-white/60 font-medium uppercase tracking-wider mr-2'>Nguồn:</span>
-                {['kkphim', 'ophim', 'nguonc'].map(s => (
+                {SWITCHABLE_SOURCES.map(s => (
                   <button
                     key={s}
                     onClick={() => {
@@ -668,7 +667,7 @@ export default function WatchPage() {
         {/* Nút Đổi Nguồn (Source Switcher) */}
         <div className='flex flex-wrap gap-2 items-center mb-6'>
           <span className='text-xs text-white/60 font-medium uppercase tracking-wider mr-2'>Nguồn:</span>
-          {['kkphim', 'ophim', 'nguonc'].map(s => (
+          {SWITCHABLE_SOURCES.map(s => (
             <button
               key={s}
               onClick={() => {
