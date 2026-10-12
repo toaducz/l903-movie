@@ -4,6 +4,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import type { MovieItem as Movie } from '@/types/movie'
+import { getMovieDetailHref } from '@/utils/movie-link'
 
 type Props = {
   movie: Movie
@@ -46,7 +47,7 @@ export default function HeroSection({ movie }: Props) {
           {/* CTA buttons */}
           <div className='flex gap-3 mb-6 flex-wrap'>
             <Link
-              href={`/detail-movie/${movie.slug}?watch=1`}
+              href={getMovieDetailHref(movie.slug, movie.source, { watch: '1' })}
               className='inline-flex items-center gap-2 px-6 py-3.5 rounded-xl font-black text-sm text-white transition-all duration-150
                          bg-[var(--c-pink)] hover:-translate-x-0.5 hover:-translate-y-0.5'
               style={{ boxShadow: '5px 5px 0 var(--c-yel)' }}
@@ -59,7 +60,7 @@ export default function HeroSection({ movie }: Props) {
               Xem ngay
             </Link>
             <Link
-              href={`/detail-movie/${movie.slug}`}
+              href={getMovieDetailHref(movie.slug, movie.source)}
               className='inline-flex items-center gap-2 px-5 py-3.5 rounded-xl font-bold text-sm text-white transition-all duration-150
                          bg-white/8 border-2 border-white/15 hover:border-[var(--c-cyan)] hover:text-[var(--c-cyan)]'
             >
@@ -91,7 +92,7 @@ export default function HeroSection({ movie }: Props) {
               transform: 'rotate(3deg)',
               boxShadow: '12px 12px 0 var(--c-pink), 22px 22px 0 var(--c-yel)'
             }}
-            onClick={() => router.push(`/detail-movie/${movie.slug}`)}
+            onClick={() => router.push(getMovieDetailHref(movie.slug, movie.source))}
             onMouseEnter={e => ((e.currentTarget as HTMLElement).style.transform = 'rotate(0deg)')}
             onMouseLeave={e => ((e.currentTarget as HTMLElement).style.transform = 'rotate(3deg)')}
           >

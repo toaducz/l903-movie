@@ -4,6 +4,8 @@ import Image from 'next/image'
 import Link from 'next/link'
 import type { MovieItem as Movie } from '@/types/movie'
 import { getOptimizedImage } from '@/utils/common'
+import { getMovieDetailHref } from '@/utils/movie-link'
+import SourceBadge from '@/component/item/source-badge'
 
 type Props = {
   movies: Movie[]
@@ -49,7 +51,11 @@ export default function AnimeRowSection({
             const optimized = getOptimizedImage(movie.thumb_url, movie.poster_url, 'poster')
 
             return (
-              <Link key={movie._id} href={`/detail-movie/${movie.slug}`} className='group block cursor-pointer'>
+              <Link
+                key={movie._id}
+                href={getMovieDetailHref(movie.slug, movie.source)}
+                className='group block cursor-pointer'
+              >
                 {/* Art — tilts + cyan border on hover */}
                 <div
                   className='relative aspect-[2/3] rounded-xl overflow-hidden border-2 border-transparent transition-all duration-200'
@@ -106,6 +112,7 @@ export default function AnimeRowSection({
                       </span>
                     )}
                   </div>
+                  <SourceBadge source={movie.source} className='absolute bottom-2.5 right-2.5' />
                 </div>
 
                 {/* Text */}

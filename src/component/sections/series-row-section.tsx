@@ -4,6 +4,8 @@ import Image from 'next/image'
 import Link from 'next/link'
 import type { MovieItem as Movie } from '@/types/movie'
 import { getOptimizedImage } from '@/utils/common'
+import { getMovieDetailHref } from '@/utils/movie-link'
+import SourceBadge from '@/component/item/source-badge'
 
 type Props = {
   movies: Movie[]
@@ -42,7 +44,7 @@ export default function SeriesRowSection({
           return (
             <Link
               key={movie._id}
-              href={`/detail-movie/${movie.slug}`}
+              href={getMovieDetailHref(movie.slug, movie.source)}
               className='group relative cursor-pointer block'
               style={{
                 transform: i % 2 === 0 ? 'rotate(-0.8deg)' : 'rotate(0.8deg)',
@@ -90,6 +92,8 @@ export default function SeriesRowSection({
                     {movie.quality}
                   </span>
                 )}
+
+                <SourceBadge source={movie.source} className='absolute top-2 right-2' />
 
                 {/* Episode pill */}
                 {movie.episode_current && (

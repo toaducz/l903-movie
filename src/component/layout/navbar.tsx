@@ -11,6 +11,7 @@ import { DEFAULT_MOVIE_SOURCE } from '@/utils/env'
 import userIcon from '@/assets/user-icons.png'
 import { useAuth } from '@/app/auth-provider'
 import NotificationBell from '@/component/layout/notification-bell'
+import { getMovieDetailHref } from '@/utils/movie-link'
 
 type DropdownItem = { _id?: string; id?: string; slug: string; name: string }
 
@@ -260,7 +261,7 @@ export default function Navbar() {
                   key={movie.slug}
                   className='flex items-center gap-3 w-full px-3 py-2.5 hover:bg-white/5 transition-colors text-left'
                   onMouseDown={() => {
-                    router.push(`/detail-movie/${movie.slug}`)
+                    router.push(getMovieDetailHref(movie.slug, movie.source))
                     setSearch('')
                     setShowSuggestions(false)
                   }}
@@ -268,7 +269,7 @@ export default function Navbar() {
                   <img
                     src={
                       (movie.poster_url || movie.thumb_url)?.startsWith('http')
-                        ? (movie.poster_url || movie.thumb_url)
+                        ? movie.poster_url || movie.thumb_url
                         : `https://phimimg.com/${(movie.poster_url || movie.thumb_url)?.replace(/^\/+/, '')}`
                     }
                     alt={movie.name}
@@ -357,7 +358,7 @@ export default function Navbar() {
                     key={movie.slug}
                     className='flex items-center gap-3 w-full px-3 py-2.5 hover:bg-white/5 transition-colors text-left'
                     onMouseDown={() => {
-                      router.push(`/detail-movie/${movie.slug}`)
+                      router.push(getMovieDetailHref(movie.slug, movie.source))
                       setSearch('')
                       setShowSuggestions(false)
                       setIsMenuOpen(false)
@@ -366,7 +367,7 @@ export default function Navbar() {
                     <img
                       src={
                         (movie.poster_url || movie.thumb_url)?.startsWith('http')
-                          ? (movie.poster_url || movie.thumb_url)
+                          ? movie.poster_url || movie.thumb_url
                           : `https://phimimg.com/${(movie.poster_url || movie.thumb_url)?.replace(/^\/+/, '')}`
                       }
                       alt={movie.name}

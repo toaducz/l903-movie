@@ -4,6 +4,8 @@ import Image from 'next/image'
 import Link from 'next/link'
 import type { MovieItem as Movie } from '@/types/movie'
 import { getOptimizedImage } from '@/utils/common'
+import { getMovieDetailHref } from '@/utils/movie-link'
+import SourceBadge from '@/component/item/source-badge'
 
 type Props = {
   movies: Movie[]
@@ -42,7 +44,7 @@ export default function MoviesRowSection({
           return (
             <Link
               key={movie._id}
-              href={`/detail-movie/${movie.slug}`}
+              href={getMovieDetailHref(movie.slug, movie.source)}
               className='group cursor-pointer rounded-xl overflow-hidden border border-white/10 transition-all duration-200
                          hover:-translate-y-1 hover:border-[var(--c-cyan)]'
               style={{ background: 'var(--c-card)' }}
@@ -78,6 +80,8 @@ export default function MoviesRowSection({
                     {movie.quality}
                   </span>
                 )}
+
+                <SourceBadge source={movie.source} className='absolute top-3 right-3' />
 
                 {/* Hover play overlay */}
                 <div className='absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center'>

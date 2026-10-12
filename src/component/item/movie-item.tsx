@@ -5,6 +5,7 @@ import Link from 'next/link'
 import type { MovieItem as MovieItemType } from '@/types/movie'
 import React, { useState } from 'react'
 import { getOphimImageMovie } from '@/utils/common'
+import SourceBadge from '@/component/item/source-badge'
 
 type Props = {
   movie: MovieItemType
@@ -56,8 +57,8 @@ export default function MovieItem({ movie, color, source, index, cdnDomain }: Re
         source === 'nguonc'
           ? `/nguonc/detail-movie/${movie.slug}`
           : source
-          ? `/detail-movie/${movie.slug}?source=${source}`
-          : `/detail-movie/${movie.slug}`
+            ? `/detail-movie/${movie.slug}?source=${source}`
+            : `/detail-movie/${movie.slug}`
       }
       className='group block'
       style={{ '--accent': accent } as React.CSSProperties}
@@ -129,17 +130,7 @@ export default function MovieItem({ movie, color, source, index, cdnDomain }: Re
           )}
 
           {/* Source badge — bottom right */}
-          {source && (
-            <span
-              className='absolute bottom-2 right-2 text-[8px] font-black px-1.5 py-0.5 rounded-sm tracking-tighter uppercase opacity-80'
-              style={{
-                background: source === 'ophim' ? '#ff4d4f' : source === 'nguonc' ? '#52c41a' : '#1890ff',
-                color: '#fff'
-              }}
-            >
-              {source === 'nguonc' ? 'Nguồn C' : source}
-            </span>
-          )}
+          <SourceBadge source={source} />
         </div>
       </div>
 
