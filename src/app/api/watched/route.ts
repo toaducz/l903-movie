@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getUserSupabase } from '@/lib/supabase-user-client'
 import { isValidSlug, parseWatchedListQuery, parseWatchedUpsert } from '@/lib/watched-validation'
+import { summarizeWatched, type WatchedSummaryRow } from '@/lib/watched-summary'
 import type { WatchedListResponse, WatchedMovie } from '@/types/watched'
 
 const COLUMNS =
@@ -16,7 +17,8 @@ const serverError = (context: string, error: unknown) => {
 
 /**
  * GET /api/watched?slug=<slug>           → { data: WatchedMovie | null } (trạng thái 1 phim, cho nút "Đã xem")
- * GET /api/watched?page&limit&sort&min_score&category&country → WatchedListResponse
+ * GET /api/watched?summary=1            → WatchedSummary (tổng, chưa chấm, điểm TB, facet thể loại / quốc gia)
+ * GET /api/watched?page&limit&sort&min_score|unrated=1&category&country → WatchedListResponse
  */
 export async function GET(req: NextRequest) {
   const auth = await getUserSupabase(req)
@@ -37,11 +39,22 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ data: (data as WatchedMovie | null) ?? null })
   }
 
+  if (searchParams.get('summary') === '1') {
+    // Danh sách cá nhân nhỏ → gom ở server thay vì thêm hàm SQL
+    const { data, error } = await client
+      .from('watched_movies')
+      .select('score, categories, countries')
+      .eq('user_id', userId)
+    if (error) return serverError('summary', error)
+    return NextResponse.json(summarizeWatched((data ?? []) as WatchedSummaryRow[]))
+  }
+
   const q = parseWatchedListQuery(searchParams)
   const from = (q.page - 1) * q.limit
 
   let query = client.from('watched_movies').select(COLUMNS, { count: 'exact' }).eq('user_id', userId)
-  if (q.minScore) query = query.gte('score', q.minScore)
+  if (q.unrated) query = query.is('score', null)
+  else if (q.minScore) query = query.gte('score', q.minScore)
   if (q.category) query = query.contains('categories', [{ slug: q.category }])
   if (q.country) query = query.contains('countries', [{ slug: q.country }])
 
@@ -52,23 +65,17 @@ export async function GET(req: NextRequest) {
         ? query.order('name', { ascending: true })
         : query.order('watched_at', { ascending: false })
 
-  const [listRes, scoreRes] = await Promise.all([
-    query.range(from, from + q.limit - 1),
-    client.from('watched_movies').select('score').eq('user_id', userId).not('score', 'is', null)
-  ])
-  if (listRes.error) return serverError('list', listRes.error)
-  if (scoreRes.error) return serverError('average score', scoreRes.error)
-
-  const scores = (scoreRes.data ?? []).map(r => r.score as number)
-  const averageScore = scores.length ? Math.round((scores.reduce((a, b) => a + b, 0) / scores.length) * 10) / 10 : null
-  const count = listRes.count ?? 0
+  const listRes = await query.range(from, from + q.limit - 1)
+  // PGRST103 = trang vượt quá số phim (vd vừa xoá phim cuối của trang cuối) → trả trang rỗng, client tự lùi trang
+  const outOfRange = listRes.error?.code === 'PGRST103'
+  if (listRes.error && !outOfRange) return serverError('list', listRes.error)
+  const count = outOfRange ? from : (listRes.count ?? 0)
 
   const body: WatchedListResponse = {
-    data: (listRes.data ?? []) as WatchedMovie[],
+    data: outOfRange ? [] : ((listRes.data ?? []) as WatchedMovie[]),
     count,
     page: q.page,
-    totalPages: Math.max(1, Math.ceil(count / q.limit)),
-    averageScore
+    totalPages: Math.max(1, Math.ceil(count / q.limit))
   }
   return NextResponse.json(body)
 }

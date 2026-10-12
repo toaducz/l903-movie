@@ -105,7 +105,9 @@ export function parseWatchedListQuery(params: URLSearchParams): WatchedListQuery
     page: toInt(params.get('page'), 1, 1, 10_000),
     limit: toInt(params.get('limit'), 24, 1, 100),
     sort: sortParam && SORTS.includes(sortParam) ? sortParam : 'recent',
-    ...(minScore !== null && { minScore: toInt(minScore, 1, 1, 5) }),
+    ...(params.get('unrated') === '1'
+      ? { unrated: true }
+      : minScore !== null && { minScore: toInt(minScore, 1, 1, 5) }),
     ...(category && isValidSlug(category) && { category }),
     ...(country && isValidSlug(country) && { country })
   }

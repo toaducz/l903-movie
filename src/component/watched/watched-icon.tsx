@@ -23,7 +23,25 @@ const PATHS = {
   pen: <path d='M4 20h4L19 9l-4-4L4 16v4zM13.5 6.5l4 4' />,
   trash: <path d='M4 7h16M10 7V4h4v3M6.5 7l1 13h9l1-13' />,
   warn: <path d='M12 3l10 18H2zM12 10v5M12 18v.5' />,
-  undo: <path d='M9 14L4 9l5-5M4 9h11a5 5 0 0 1 0 10h-3' />
+  undo: <path d='M9 14L4 9l5-5M4 9h11a5 5 0 0 1 0 10h-3' />,
+  chev: <path d='M6 9l6 6 6-6' />,
+  left: <path d='M15 6l-6 6 6 6' />,
+  right: <path d='M9 6l6 6-6 6' />,
+  dots: (
+    <>
+      <circle cx='5' cy='12' r='1.6' fill='currentColor' />
+      <circle cx='12' cy='12' r='1.6' fill='currentColor' />
+      <circle cx='19' cy='12' r='1.6' fill='currentColor' />
+    </>
+  ),
+  filter: <path d='M4 6h16M7 12h10M10 18h4' />,
+  search: (
+    <>
+      <circle cx='11' cy='11' r='7' />
+      <path d='M20 20l-4-4' />
+    </>
+  ),
+  ext: <path d='M14 4h6v6M20 4l-9 9M18 14v6H4V6h6' />
 } as const
 
 export type WatchedIconName = keyof typeof PATHS

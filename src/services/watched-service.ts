@@ -6,6 +6,7 @@ import type {
   WatchedListResponse,
   WatchedMovie,
   WatchedSource,
+  WatchedSummary,
   WatchedUpsertInput
 } from '@/types/watched'
 
@@ -49,12 +50,20 @@ export const getWatchedList = (params: Partial<WatchedListQuery> = {}) =>
         ...(params.page && { page: String(params.page) }),
         ...(params.limit && { limit: String(params.limit) }),
         ...(params.sort && { sort: params.sort }),
-        ...(params.minScore && { min_score: String(params.minScore) }),
+        ...(params.unrated ? { unrated: '1' } : params.minScore && { min_score: String(params.minScore) }),
         ...(params.category && { category: params.category }),
         ...(params.country && { country: params.country })
       })
       return callWatchedApi<WatchedListResponse>({ query: query.toString() })
     }
+  })
+
+/** Số liệu toàn danh sách: tổng (badge tab), chưa chấm, điểm TB, thể loại / quốc gia để lọc */
+export const getWatchedSummary = (enabled = true) =>
+  queryOptions<WatchedSummary>({
+    queryKey: [WATCHED_QUERY_KEY, 'summary'],
+    queryFn: () => callWatchedApi<WatchedSummary>({ query: 'summary=1' }),
+    enabled
   })
 
 /** Đánh dấu đã xem hoặc sửa điểm / ghi chú (trường không truyền thì giữ nguyên) */

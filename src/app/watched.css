@@ -474,7 +474,7 @@
   position: absolute;
   right: 12px;
   bottom: 10px;
-  font: 700 11px var(--font-mono);
+  font: 700 11px var(--c-mono);
   color: var(--c-faint);
   pointer-events: none;
 }

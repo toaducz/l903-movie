@@ -1,8 +1,9 @@
 'use client'
 
 import HistoryItem from '@/component/item/profile-movie-items'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import Loading from '@/component/status/loading'
+import { FAVORITE_COUNT_QUERY_KEY } from '@/component/profile/profile-shell'
 
 type FavoriteMovie = {
   name: string
@@ -12,6 +13,7 @@ type FavoriteMovie = {
 }
 
 export default function FavoritePage() {
+  const queryClient = useQueryClient()
   const { data: favorites = [], isLoading: loading, error, refetch } = useQuery<FavoriteMovie[]>({
     queryKey: ['favorites_full'],
     queryFn: async () => {
@@ -37,6 +39,7 @@ export default function FavoritePage() {
       const result = await res.json()
       if (!result.error) {
         refetch()
+        queryClient.invalidateQueries({ queryKey: [FAVORITE_COUNT_QUERY_KEY] })
       } else {
         alert(result.error)
       }
@@ -48,13 +51,16 @@ export default function FavoritePage() {
   if (loading) return <Loading />
 
   return (
-    <div className='pt-16 px-4 max-w-5xl mx-auto min-h-screen'>
-      <h1 className='text-2xl font-bold mb-6'>Phim yêu thích</h1>
+    <div>
+      <div className='flex items-center gap-3.5 mb-6'>
+        <span className='c-marker' />
+        <h2 className='text-2xl sm:text-[30px] font-black tracking-[-0.04em]'>Phim yêu thích</h2>
+      </div>
 
       {error && <p className='text-red-500'>{error.message}</p>}
 
       {!error && favorites.length > 0 ? (
-        <div className='grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4 content-start'>
+        <div className='grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4 content-start'>
           {favorites.map(movie => (
             <div key={`${movie.slug}_${movie.source}`} className='relative'>
               <HistoryItem

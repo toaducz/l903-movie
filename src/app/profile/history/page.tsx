@@ -60,11 +60,14 @@ export default function HistoryPage() {
   if (isLoading) return <Loading />
 
   return (
-    <div className='pt-16 px-4 max-w-5xl mx-auto min-h-screen'>
-      <h1 className='text-2xl font-bold mb-6'>Lịch sử xem</h1>
+    <div>
+      <div className='flex items-center gap-3.5 mb-6'>
+        <span className='c-marker' />
+        <h2 className='text-2xl sm:text-[30px] font-black tracking-[-0.04em]'>Lịch sử xem</h2>
+      </div>
 
       {visibleMovies.length > 0 ? (
-        <div className='grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4 content-start'>
+        <div className='grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4 content-start'>
           {visibleMovies.map((movie: HistoryMovie) => (
             <HistoryItem
               key={`${movie.slug}_${movie.source}`}

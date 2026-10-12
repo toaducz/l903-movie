@@ -41,6 +41,12 @@
   --shadow-sticker: 3px 3px 0 var(--c-bg);
 }
 
+/* Font số / ngày: next/font gắn --font-jetbrains-mono ở <body> nên token phải khai báo ở đây,
+   (@theme inline không xuất --font-mono ra biến CSS) */
+body {
+  --c-mono: var(--font-jetbrains-mono), ui-monospace, monospace;
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);

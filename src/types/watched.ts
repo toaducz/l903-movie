@@ -43,6 +43,7 @@ export interface WatchedListQuery {
   limit: number
   sort: WatchedSort
   minScore?: number
+  unrated?: boolean // chỉ phim chưa chấm (bỏ qua minScore)
   category?: string
   country?: string
 }
@@ -52,5 +53,17 @@ export interface WatchedListResponse {
   count: number
   page: number
   totalPages: number
-  averageScore: number | null
+}
+
+export interface WatchedFacet extends WatchedTaxonomy {
+  count: number
+}
+
+// GET /api/watched?summary=1 — số liệu toàn bộ danh sách (tab, tiêu đề, bộ lọc)
+export interface WatchedSummary {
+  total: number
+  unratedCount: number
+  averageScore: number | null // tính trên phim đã chấm, làm tròn 1 chữ số
+  categories: WatchedFacet[]
+  countries: WatchedFacet[]
 }
