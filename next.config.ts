@@ -30,6 +30,11 @@ const securityHeaders = [
   {
     key: 'Strict-Transport-Security',
     value: 'max-age=63072000; includeSubDomains; preload'
+  },
+  // Chặn công cụ tìm kiếm lập chỉ mục (index) website
+  {
+    key: 'X-Robots-Tag',
+    value: 'noindex, nofollow, noarchive, nosnippet'
   }
 ]
 
