@@ -8,6 +8,7 @@ import Loading from '@/component/status/loading'
 import Error from '@/component/status/error'
 import Link from 'next/link'
 import ContinueWatchingSection from '@/component/sections/continue-watching-section'
+import CommunityStripSection from '@/component/sections/community-strip-section'
 import HeroSection from '@/component/sections/hero-section'
 import SeriesRowSection from '@/component/sections/series-row-section'
 import MoviesRowSection from '@/component/sections/movies-row-section'
@@ -54,6 +55,9 @@ export default function Home() {
 
       {/* ── Continue Watching ────────────────────────── */}
       <ContinueWatchingSection />
+
+      {/* ── Community Strip ──────────────────────────── */}
+      <CommunityStripSection />
 
       {/* ── New Releases grid ────────────────────────── */}
       <section className='px-5 sm:px-10 py-8'>
