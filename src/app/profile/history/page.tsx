@@ -6,21 +6,39 @@ import { getViewHistory } from '@/utils/local-storage'
 import { useAuth } from '@/app/auth-provider'
 import { useQuery } from '@tanstack/react-query'
 import Loading from '@/component/status/loading'
+import ProfilePrivateLocked from '@/component/profile/profile-private-locked'
 
-type HistoryMovie = { name: string; slug: string; image: string; episode_name?: string; source?: string }
+interface HistoryMovie {
+  name: string
+  slug: string
+  image: string
+  episode_name?: string
+  source?: string
+}
 
-export default function HistoryPage() {
+interface HistoryPageProps {
+  userId?: string
+}
+
+export default function HistoryPage({ userId }: HistoryPageProps) {
   const { user } = useAuth()
   const [page, setPage] = useState(1)
-  const PAGE_SIZE = 10
+  const PAGE_SIZE = 12
 
-  const { data: allMoviesBase, isLoading, refetch } = useQuery({
-    queryKey: ['history_full', user?.id],
+  const isOwner = !userId || userId === user?.id
+  const targetId = userId || user?.id
+
+  const { data: allMoviesBase, isLoading, isError, error, refetch } = useQuery({
+    queryKey: ['history_full', targetId],
     queryFn: async () => {
-      if (!user) return getViewHistory()
-      const res = await fetch('/api/history')
-      if (res.status === 401) return getViewHistory()
+      if (isOwner && !user) return getViewHistory()
+      const url = isOwner ? '/api/history' : `/api/history?user_id=${targetId}`
+      const res = await fetch(url)
+      if (res.status === 401 && isOwner) return getViewHistory()
       const json = await res.json()
+      if (!res.ok) {
+        throw new Error(json.error || 'Không thể tải lịch sử xem')
+      }
       return (json.data ?? []).map((d: HistoryMovie) => ({
         name: d.name,
         slug: d.slug,
@@ -28,7 +46,8 @@ export default function HistoryPage() {
         episode_name: d.episode_name,
         source: d.source
       }))
-    }
+    },
+    enabled: Boolean(targetId || (!userId && typeof window !== 'undefined'))
   })
 
   const allMovies = allMoviesBase || []
@@ -48,6 +67,7 @@ export default function HistoryPage() {
   }, [visibleMovies.length, allMovies.length])
 
   const clearHistory = async () => {
+    if (!isOwner) return
     if (user) {
       await fetch('/api/history', { method: 'DELETE' })
     } else {
@@ -58,6 +78,16 @@ export default function HistoryPage() {
   }
 
   if (isLoading) return <Loading />
+
+  if (isError && error?.message?.includes('riêng tư')) {
+    return (
+      <ProfilePrivateLocked
+        title='Lịch sử xem riêng tư'
+        description='Người dùng này đã đặt lịch sử xem phim ở chế độ riêng tư.'
+        backHref={userId ? `/profile/${userId}` : '/profile'}
+      />
+    )
+  }
 
   return (
     <div>
@@ -80,14 +110,20 @@ export default function HistoryPage() {
           ))}
         </div>
       ) : (
-        <p className='text-gray-500'>Bạn chưa xem phim nào.</p>
+        <div className='text-[var(--c-dim)] bg-[var(--c-card)] p-8 rounded-2xl border border-[var(--c-line)] text-center'>
+          {isOwner ? 'Bạn chưa xem phim nào.' : 'Người dùng này chưa có lịch sử xem phim.'}
+        </div>
       )}
 
-      {visibleMovies.length < allMovies.length && <p className='text-center mt-4 text-gray-400'>Đang tải thêm...</p>}
+      {visibleMovies.length < allMovies.length && <p className='text-center mt-4 text-[var(--c-faint)]'>Đang tải thêm...</p>}
 
-      {visibleMovies.length > 0 && (
-        <div className='mt-6 text-center'>
-          <button onClick={clearHistory} className='px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition mb-10 cursor-pointer'>
+      {isOwner && visibleMovies.length > 0 && (
+        <div className='mt-8 text-center'>
+          <button
+            type='button'
+            onClick={clearHistory}
+            className='px-4 py-2 bg-red-600/90 text-white rounded-xl hover:bg-red-700 transition-colors duration-200 cursor-pointer text-sm font-semibold'
+          >
             Xóa hết lịch sử xem
           </button>
         </div>

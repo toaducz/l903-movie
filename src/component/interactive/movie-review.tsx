@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useEffect, useState } from 'react'
+import Link from 'next/link'
 import { useAuth } from '@/app/auth-provider'
 import Loading from '@/component/status/loading'
 
@@ -12,6 +13,7 @@ interface MovieReviewProps {
 
 interface Review {
   id: string
+  user_id?: string
   user_email: string
   score: number
   review_text: string
@@ -218,7 +220,17 @@ export default function MovieReview({ slug, name, image }: MovieReviewProps) {
       <div key={review.id} className={`bg-gray-800/40 p-5 rounded-xl border border-gray-700 ${isReply ? 'mt-4 ml-4 lg:ml-12 border-l-4 border-l-blue-600 shadow-md' : 'shadow-sm'}`}>
         <div className='flex justify-between items-start mb-3 border-b border-gray-700/50 pb-3'>
           <div>
-            <span className='font-semibold text-blue-400 mr-2'>{username}</span>
+            {review.user_id ? (
+              <Link
+                href={`/profile/${review.user_id}`}
+                className='font-semibold text-blue-400 mr-2 hover:underline hover:text-[var(--c-cyan)] transition-colors duration-200 cursor-pointer inline-flex items-center gap-1'
+                title='Xem hồ sơ thành viên'
+              >
+                <span>@{username}</span>
+              </Link>
+            ) : (
+              <span className='font-semibold text-blue-400 mr-2'>@{username}</span>
+            )}
             {isReply && review.reply_to_username && (
                <span className='text-gray-400 text-sm mr-2'>
                   Trả lời <span className='text-blue-300'>@{review.reply_to_username}</span>

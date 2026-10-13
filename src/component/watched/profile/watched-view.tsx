@@ -13,21 +13,33 @@ import WatchedActionSheet from './watched-action-sheet'
 import { WatchedEmpty, WatchedError, WatchedGridSkeleton, WatchedNoResult } from './watched-states'
 import { describeNoResult, filtersToSearch, parseFilters, toListQuery, type WatchedFilters } from './watched-filters'
 import type { WatchedMovie } from '@/types/watched'
+import { useAuth } from '@/app/auth-provider'
+import ProfilePrivateLocked from '@/component/profile/profile-private-locked'
 
 const formatAverage = (n: number) => n.toLocaleString('vi-VN', { minimumFractionDigits: 1, maximumFractionDigits: 1 })
 
+interface WatchedViewProps {
+  userId?: string
+}
+
 // Tab "Đã xem" trong Hồ sơ: lưới phim + sắp xếp / lọc / phân trang (trạng thái nằm trên URL)
-export default function WatchedView() {
+export default function WatchedView({ userId }: WatchedViewProps = {}) {
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const filters = parseFilters(searchParams)
   const { openRating, deleteWatched } = useWatched()
+  const { user } = useAuth()
   const [sheetMovie, setSheetMovie] = useState<WatchedMovie | null>(null)
   const topRef = useRef<HTMLDivElement>(null)
 
-  const summary = useQuery(getWatchedSummary())
-  const list = useQuery({ ...getWatchedList(toListQuery(filters)), placeholderData: keepPreviousData })
+  const isOwner = !userId || userId === user?.id
+
+  const summary = useQuery(getWatchedSummary(true, userId))
+  const list = useQuery({
+    ...getWatchedList({ ...toListQuery(filters), userId }),
+    placeholderData: keepPreviousData
+  })
 
   const setFilters = useCallback(
     (next: WatchedFilters, scrollTop = false) => {
@@ -44,8 +56,12 @@ export default function WatchedView() {
     if (!list.isPlaceholderData && list.data && filters.page > totalPages) setFilters({ ...filters, page: totalPages })
   }, [list.data, list.isPlaceholderData, filters, totalPages, setFilters])
 
-  const rate = (movie: WatchedMovie) => openRating(toRatingTarget(movie))
-  const remove = (movie: WatchedMovie) => deleteWatched(toRatingTarget(movie))
+  const rate = (movie: WatchedMovie) => {
+    if (isOwner) openRating(toRatingTarget(movie))
+  }
+  const remove = (movie: WatchedMovie) => {
+    if (isOwner) deleteWatched(toRatingTarget(movie))
+  }
 
   const total = summary.data?.total ?? 0
   const loadingFirst = summary.isPending || (list.isPending && !list.data)
@@ -78,13 +94,21 @@ export default function WatchedView() {
       </div>
 
       {error && !list.data ? (
-        <WatchedError
-          message={watchedErrorMessage(error)}
-          onRetry={() => {
-            summary.refetch()
-            list.refetch()
-          }}
-        />
+        watchedErrorMessage(error).includes('riêng tư') ? (
+          <ProfilePrivateLocked
+            title='Danh sách đã xem riêng tư'
+            description='Người dùng này đã đặt danh sách phim đã xem ở chế độ riêng tư.'
+            backHref={userId ? `/profile/${userId}` : '/profile'}
+          />
+        ) : (
+          <WatchedError
+            message={watchedErrorMessage(error)}
+            onRetry={() => {
+              summary.refetch()
+              list.refetch()
+            }}
+          />
+        )
       ) : summary.data && total === 0 ? (
         <WatchedEmpty />
       ) : (

@@ -133,8 +133,23 @@ export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
   const slug = searchParams.get('slug')
   const my_reviews = searchParams.get('my_reviews')
+  const userIdParam = searchParams.get('user_id')
 
-  // Logic lấy review của cá nhân (giữ nguyên)
+  // Lấy review của một user cụ thể (khi xem profile người khác)
+  if (userIdParam) {
+    const { data, error } = await supabase
+      .from('movie_reviews')
+      .select('*')
+      .eq('user_id', userIdParam)
+      .is('parent_id', null)
+      .gt('score', 0)
+      .order('updated_at', { ascending: false })
+
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json({ data })
+  }
+
+  // Logic lấy review của cá nhân (khi xem profile của chính mình)
   if (my_reviews === '1') {
     await getSession(req)
     const user_id = await getUserId(req)

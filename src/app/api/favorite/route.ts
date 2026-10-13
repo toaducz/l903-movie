@@ -75,21 +75,22 @@ export async function DELETE(req: NextRequest) {
 export async function GET(req: NextRequest) {
   await getSession(req)
 
-  const user_id = await getUserId(req)
-  if (!user_id) {
+  const currentUserId = await getUserId(req)
+  if (!currentUserId) {
     return NextResponse.json({ error: 'Không xác thực được' }, { status: 401 })
   }
 
   const { searchParams } = new URL(req.url)
-  const page = parseInt(searchParams.get('page') || '1', 10)
-  const limit = parseInt(searchParams.get('limit') || '10', 10)
+  const targetUserId = searchParams.get('user_id') || currentUserId
+  const page = Math.max(1, parseInt(searchParams.get('page') || '1', 10))
+  const limit = Math.max(1, Math.min(50, parseInt(searchParams.get('limit') || '12', 10)))
   const from = (page - 1) * limit
   const to = from + limit - 1
 
   const { data, error, count } = await supabase
     .from('favorite')
     .select('*', { count: 'exact' })
-    .eq('user_id', user_id)
+    .eq('user_id', targetUserId)
     .order('created_at', { ascending: false })
     .range(from, to)
 

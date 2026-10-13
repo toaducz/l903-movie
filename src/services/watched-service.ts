@@ -42,11 +42,12 @@ export const getWatchedStatus = (slug: string, enabled = true) =>
   })
 
 /** Danh sách "Đã xem" có lọc / sắp xếp / phân trang — cho trang Hồ sơ */
-export const getWatchedList = (params: Partial<WatchedListQuery> = {}) =>
+export const getWatchedList = (params: Partial<WatchedListQuery> & { userId?: string } = {}) =>
   queryOptions<WatchedListResponse>({
     queryKey: [WATCHED_QUERY_KEY, 'list', params],
     queryFn: () => {
       const query = new URLSearchParams({
+        ...(params.userId && { user_id: params.userId }),
         ...(params.page && { page: String(params.page) }),
         ...(params.limit && { limit: String(params.limit) }),
         ...(params.sort && { sort: params.sort }),
@@ -59,10 +60,16 @@ export const getWatchedList = (params: Partial<WatchedListQuery> = {}) =>
   })
 
 /** Số liệu toàn danh sách: tổng (badge tab), chưa chấm, điểm TB, thể loại / quốc gia để lọc */
-export const getWatchedSummary = (enabled = true) =>
+export const getWatchedSummary = (enabled = true, userId?: string) =>
   queryOptions<WatchedSummary>({
-    queryKey: [WATCHED_QUERY_KEY, 'summary'],
-    queryFn: () => callWatchedApi<WatchedSummary>({ query: 'summary=1' }),
+    queryKey: [WATCHED_QUERY_KEY, 'summary', userId ?? 'me'],
+    queryFn: () =>
+      callWatchedApi<WatchedSummary>({
+        query: new URLSearchParams({
+          summary: '1',
+          ...(userId && { user_id: userId })
+        }).toString()
+      }),
     enabled
   })
 

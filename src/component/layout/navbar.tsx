@@ -141,6 +141,11 @@ export default function Navbar() {
       label: secondarySourceLabel,
       tooltip: `Nguồn phụ trợ (${secondarySourceLabel})`
     }
+    // {
+    //   href: { pathname: '/users' },
+    //   label: 'Cộng đồng',
+    //   tooltip: 'Khám phá gu phim của các thành viên khác'
+    // }
   ]
 
   if (pathname === '/login' || pathname === '/home') return null

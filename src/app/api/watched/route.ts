@@ -1,6 +1,6 @@
-// api/watched/route.ts — danh sách "Đã xem" (riêng tư theo tài khoản)
 import { NextRequest, NextResponse } from 'next/server'
 import { getUserSupabase } from '@/lib/supabase-user-client'
+import { supabase } from '@/lib/supabaseClient'
 import { isValidSlug, parseWatchedListQuery, parseWatchedUpsert } from '@/lib/watched-validation'
 import { summarizeWatched, type WatchedSummaryRow } from '@/lib/watched-summary'
 import type { WatchedListResponse, WatchedMovie } from '@/types/watched'
@@ -26,13 +26,34 @@ export async function GET(req: NextRequest) {
   const { client, userId } = auth
   const { searchParams } = new URL(req.url)
 
+  const targetUserId = searchParams.get('user_id') || userId
+  const isSelf = targetUserId === userId
+
+  if (!isSelf) {
+    const { data: privacy } = await supabase
+      .from('user_privacy_settings')
+      .select('is_watched_public')
+      .eq('user_id', targetUserId)
+      .maybeSingle()
+
+    if (!privacy?.is_watched_public) {
+      return NextResponse.json(
+        { error: 'Danh sách đã xem của người dùng này đang ở chế độ riêng tư', is_private: true },
+        { status: 403 }
+      )
+    }
+  }
+
+  // Nếu xem của người khác, dùng supabase client server để query
+  const queryDb = isSelf ? client : supabase
+
   const slug = searchParams.get('slug')
   if (slug !== null) {
     if (!isValidSlug(slug)) return badRequest('slug không hợp lệ')
-    const { data, error } = await client
+    const { data, error } = await queryDb
       .from('watched_movies')
       .select(COLUMNS)
-      .eq('user_id', userId)
+      .eq('user_id', targetUserId)
       .eq('slug', slug)
       .maybeSingle()
     if (error) return serverError('get one', error)
@@ -41,10 +62,10 @@ export async function GET(req: NextRequest) {
 
   if (searchParams.get('summary') === '1') {
     // Danh sách cá nhân nhỏ → gom ở server thay vì thêm hàm SQL
-    const { data, error } = await client
+    const { data, error } = await queryDb
       .from('watched_movies')
       .select('score, categories, countries')
-      .eq('user_id', userId)
+      .eq('user_id', targetUserId)
     if (error) return serverError('summary', error)
     return NextResponse.json(summarizeWatched((data ?? []) as WatchedSummaryRow[]))
   }
@@ -52,7 +73,7 @@ export async function GET(req: NextRequest) {
   const q = parseWatchedListQuery(searchParams)
   const from = (q.page - 1) * q.limit
 
-  let query = client.from('watched_movies').select(COLUMNS, { count: 'exact' }).eq('user_id', userId)
+  let query = queryDb.from('watched_movies').select(COLUMNS, { count: 'exact' }).eq('user_id', targetUserId)
   if (q.unrated) query = query.is('score', null)
   else if (q.minScore) query = query.gte('score', q.minScore)
   if (q.category) query = query.contains('categories', [{ slug: q.category }])

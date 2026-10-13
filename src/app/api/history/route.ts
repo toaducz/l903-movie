@@ -40,13 +40,31 @@ export async function POST(req: NextRequest) {
 /** GET /api/history - lấy danh sách lịch sử */
 export async function GET(req: NextRequest) {
   await setSession(req)
-  const user_id = await getUserId(req)
-  if (!user_id) return NextResponse.json({ error: 'Chưa đăng nhập' }, { status: 401 })
+  const currentUserId = await getUserId(req)
+  if (!currentUserId) return NextResponse.json({ error: 'Chưa đăng nhập' }, { status: 401 })
+
+  const { searchParams } = new URL(req.url)
+  const targetUserId = searchParams.get('user_id') || currentUserId
+
+  if (targetUserId !== currentUserId) {
+    const { data: privacy } = await supabase
+      .from('user_privacy_settings')
+      .select('is_history_public')
+      .eq('user_id', targetUserId)
+      .maybeSingle()
+
+    if (!privacy?.is_history_public) {
+      return NextResponse.json(
+        { error: 'Lịch sử xem phim của người dùng này đang ở chế độ riêng tư', is_private: true },
+        { status: 403 }
+      )
+    }
+  }
 
   const { data, error } = await supabase
     .from('watch_history')
     .select('slug, name, image, episode_name, progress, duration, source, updated_at')
-    .eq('user_id', user_id)
+    .eq('user_id', targetUserId)
     .order('updated_at', { ascending: false })
     .limit(100)
 
