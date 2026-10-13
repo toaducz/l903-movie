@@ -20,6 +20,70 @@ type DbItem = {
   source: string
 }
 
+interface ContinueWatchingSkeletonProps {
+  count?: number
+}
+
+interface ContinueWatchingCardSkeletonProps {
+  index: number
+}
+
+function ContinueWatchingCardSkeleton({ index }: ContinueWatchingCardSkeletonProps) {
+  return (
+    <div
+      className='relative flex-shrink-0 w-36 sm:w-44'
+      style={{
+        transform: index % 2 === 0 ? 'rotate(-1deg)' : 'rotate(1deg)'
+      }}
+    >
+      {/* Poster art skeleton */}
+      <div className='relative rounded-xl overflow-hidden border border-white/10 bg-[var(--c-card)] h-52 sm:h-64 animate-pulse'>
+        <div className='absolute inset-0 bg-white/5' />
+
+        {/* Top-right percent badge placeholder */}
+        <div className='absolute top-2 right-2 w-9 h-5 rounded-md bg-white/10 border border-white/10' />
+
+        {/* Bottom-right source badge placeholder */}
+        <div className='absolute bottom-2.5 right-2 w-12 h-4 rounded bg-white/10' />
+
+        {/* Progress bar placeholder */}
+        <div className='absolute bottom-0 left-0 right-0 h-1 bg-white/10'>
+          <div className='h-full w-2/5 bg-[var(--c-pink)]/40' />
+        </div>
+      </div>
+
+      {/* Title & subtitle skeleton */}
+      <div className='mt-2.5 px-0.5 space-y-1.5'>
+        <div className='h-3.5 w-3/4 rounded bg-white/10 animate-pulse' />
+        <div className='h-3 w-1/2 rounded bg-white/5 animate-pulse' />
+      </div>
+    </div>
+  )
+}
+
+export function ContinueWatchingSkeleton({ count = 6 }: ContinueWatchingSkeletonProps) {
+  return (
+    <section className='px-5 sm:px-10 pt-8 pb-2' aria-busy='true' aria-label='Đang tải danh sách đang xem'>
+      {/* Section header */}
+      <div className='max-w-[1400px] mx-auto flex items-end justify-between mb-5'>
+        <h2 className='text-2xl sm:text-3xl font-black tracking-tight text-white flex items-center gap-3'>
+          <span className='c-marker animate-pulse' />
+          Đang xem dở
+        </h2>
+      </div>
+
+      {/* Row container */}
+      <div className='max-w-[1400px] mx-auto relative'>
+        <div className='flex gap-4 overflow-hidden pb-2 no-scrollbar'>
+          {Array.from({ length: count }, (_, i) => (
+            <ContinueWatchingCardSkeleton key={i} index={i} />
+          ))}
+        </div>
+      </div>
+    </section>
+  )
+}
+
 export default function ContinueWatchingSection() {
   const [canScrollLeft, setCanScrollLeft] = useState(false)
   const [canScrollRight, setCanScrollRight] = useState(false)
@@ -99,7 +163,11 @@ export default function ContinueWatchingSection() {
     el.scrollBy({ left: dir === 'left' ? -400 : 400, behavior: 'smooth' })
   }
 
-  if (isLoading || items.length === 0) return null
+  if (isLoading) {
+    return <ContinueWatchingSkeleton />
+  }
+
+  if (items.length === 0) return null
 
   return (
     <div className='px-5 sm:px-10 pt-8 pb-2'>

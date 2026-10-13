@@ -49,11 +49,11 @@ export default function ProfileShell({ children }: { children: ReactNode }) {
     { href: '/profile', label: 'Tổng quan' },
     { href: '/profile/favorite', label: 'Yêu thích', count: favoriteCount },
     { href: '/profile/history', label: 'Lịch sử' },
-    { href: '/profile/watched', label: 'Đã xem', count: watchedSummary?.total }
+    { href: '/profile/watched', label: 'Đã xem xong!', count: watchedSummary?.total }
   ]
 
   return (
-    <div className='pt-16 text-white min-h-screen'>
+    <div className='text-white min-h-screen'>
       <div className='max-w-[1400px] mx-auto px-4 sm:px-10'>
         <div className='dx-ph pt-5 sm:pt-9'>
           <span className='dx-av' aria-hidden='true'>

@@ -57,7 +57,7 @@ export default function WatchedButton({ detail, source, className = '' }: Props)
         onClick={markWatched}
       >
         <WatchedIcon name='check' size={18} strokeWidth={2.6} />
-        Đã xem
+        Đã xem xong!
       </button>
     )
   }
