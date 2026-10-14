@@ -30,14 +30,15 @@ export async function GET(req: NextRequest) {
       const reviewCountMap = new Map<string, number>()
 
       if (userIds.length > 0) {
-        const { data: reviews } = await supabase
-          .from('movie_reviews')
+        const { data: watchedRatings } = await supabase
+          .from('watched_movies')
           .select('user_id')
           .in('user_id', userIds)
+          .not('score', 'is', null)
 
-        for (const r of reviews ?? []) {
-          if (r.user_id) {
-            reviewCountMap.set(r.user_id, (reviewCountMap.get(r.user_id) || 0) + 1)
+        for (const w of watchedRatings ?? []) {
+          if (w.user_id) {
+            reviewCountMap.set(w.user_id, (reviewCountMap.get(w.user_id) || 0) + 1)
           }
         }
       }
@@ -77,7 +78,7 @@ export async function GET(req: NextRequest) {
   // 2. Dự phòng (Fallback): Gom TẤT CẢ các user_id xuất hiện trong toàn bộ các bảng của hệ thống
   const usersMap = new Map<string, CommunityUser>()
 
-  // A. Bảng movie_reviews
+  // A. Bảng movie_reviews (người dùng tham gia thảo luận)
   const { data: reviews } = await supabase
     .from('movie_reviews')
     .select('user_id, user_email, updated_at')
@@ -89,15 +90,13 @@ export async function GET(req: NextRequest) {
     const handle = email.split('@')[0] || 'member'
     const name = handle
     const existing = usersMap.get(r.user_id)
-    if (existing) {
-      existing.reviewCount += 1
-    } else {
+    if (!existing) {
       usersMap.set(r.user_id, {
         id: r.user_id,
         name,
         handle,
         initial: name.trim().charAt(0).toUpperCase() || '?',
-        reviewCount: 1,
+        reviewCount: 0,
         joinedYear: r.updated_at ? new Date(r.updated_at).getFullYear() : null
       })
     }
@@ -138,22 +137,27 @@ export async function GET(req: NextRequest) {
     })
   }
 
-  // D. Bảng watched_movies
+  // D. Bảng watched_movies (tính số lượng phim đã chấm điểm)
   const { data: watchedUsers } = await supabase
     .from('watched_movies')
-    .select('user_id, watched_at')
-    .limit(100)
+    .select('user_id, watched_at, score')
+    .limit(200)
 
   for (const w of watchedUsers ?? []) {
-    if (!w.user_id || usersMap.has(w.user_id)) continue
-    usersMap.set(w.user_id, {
-      id: w.user_id,
-      name: 'Thành viên L903',
-      handle: w.user_id.slice(0, 8),
-      initial: 'T',
-      reviewCount: 0,
-      joinedYear: w.watched_at ? new Date(w.watched_at).getFullYear() : null
-    })
+    if (!w.user_id) continue
+    const existing = usersMap.get(w.user_id)
+    if (existing) {
+      if (w.score !== null) existing.reviewCount += 1
+    } else {
+      usersMap.set(w.user_id, {
+        id: w.user_id,
+        name: 'Thành viên L903',
+        handle: w.user_id.slice(0, 8),
+        initial: 'T',
+        reviewCount: w.score !== null ? 1 : 0,
+        joinedYear: w.watched_at ? new Date(w.watched_at).getFullYear() : null
+      })
+    }
   }
 
   let allUsers = Array.from(usersMap.values())

@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { usePathname, useRouter, useSearchParams } from 'next/navigation'
+import { useParams, usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { getWatchedList, getWatchedSummary, watchedErrorMessage } from '@/services/watched-service'
 import { useWatched } from '../watched-provider'
@@ -23,9 +23,10 @@ interface WatchedViewProps {
 }
 
 // Tab "Đã xem" trong Hồ sơ: lưới phim + sắp xếp / lọc / phân trang (trạng thái nằm trên URL)
-export default function WatchedView({ userId }: WatchedViewProps = {}) {
+export default function WatchedView({ userId: propUserId }: WatchedViewProps = {}) {
   const router = useRouter()
   const pathname = usePathname()
+  const params = useParams<{ id?: string }>()
   const searchParams = useSearchParams()
   const filters = parseFilters(searchParams)
   const { openRating, deleteWatched } = useWatched()
@@ -33,11 +34,26 @@ export default function WatchedView({ userId }: WatchedViewProps = {}) {
   const [sheetMovie, setSheetMovie] = useState<WatchedMovie | null>(null)
   const topRef = useRef<HTMLDivElement>(null)
 
-  const isOwner = !userId || userId === user?.id
+  // Trích xuất userId từ prop, params (/profile/[id]/watched) hoặc pathname
+  const pathParts = pathname?.split('/').filter(Boolean) || []
+  const pathUserId =
+    pathParts[0] === 'profile' &&
+    pathParts[1] &&
+    !['watched', 'history', 'favorite'].includes(pathParts[1])
+      ? pathParts[1]
+      : undefined
 
-  const summary = useQuery(getWatchedSummary(true, userId))
+  const effectiveUserId = propUserId || params?.id || pathUserId
+
+  // Nếu đang xem của user khác: chỉ là owner khi đã đăng nhập và user.id khớp với effectiveUserId
+  // Nếu ở trang /profile/watched của chính mình: chỉ là owner khi đã đăng nhập
+  const isOwner = effectiveUserId
+    ? Boolean(user?.id && user.id === effectiveUserId)
+    : Boolean(user?.id)
+
+  const summary = useQuery(getWatchedSummary(true, effectiveUserId))
   const list = useQuery({
-    ...getWatchedList({ ...toListQuery(filters), userId }),
+    ...getWatchedList({ ...toListQuery(filters), userId: effectiveUserId }),
     placeholderData: keepPreviousData
   })
 
@@ -87,10 +103,12 @@ export default function WatchedView({ userId }: WatchedViewProps = {}) {
             <span className='dx-sk' style={{ width: 120, height: 24, borderRadius: 99 }} />
           </>
         )}
-        <span className='dx-r'>
-          <WatchedIcon name='lock' size={13} />
-          Điểm & ghi chú chỉ mình bạn thấy
-        </span>
+        {isOwner && (
+          <span className='dx-r'>
+            <WatchedIcon name='lock' size={13} />
+            Điểm & bình luận chỉ mình bạn thấy nếu không công khai
+          </span>
+        )}
       </div>
 
       {error && !list.data ? (
@@ -98,7 +116,7 @@ export default function WatchedView({ userId }: WatchedViewProps = {}) {
           <ProfilePrivateLocked
             title='Danh sách đã xem riêng tư'
             description='Người dùng này đã đặt danh sách phim đã xem ở chế độ riêng tư.'
-            backHref={userId ? `/profile/${userId}` : '/profile'}
+            backHref={effectiveUserId ? `/profile/${effectiveUserId}` : '/profile'}
           />
         ) : (
           <WatchedError
@@ -110,7 +128,7 @@ export default function WatchedView({ userId }: WatchedViewProps = {}) {
           />
         )
       ) : summary.data && total === 0 ? (
-        <WatchedEmpty />
+        <WatchedEmpty isOwner={isOwner} />
       ) : (
         <>
           <WatchedToolbar
@@ -133,7 +151,14 @@ export default function WatchedView({ userId }: WatchedViewProps = {}) {
             <div className={list.isPlaceholderData ? 'opacity-60 transition-opacity' : 'transition-opacity'}>
               <div className='dx-grid'>
                 {list.data?.data.map(movie => (
-                  <WatchedCard key={movie.id} movie={movie} onRate={rate} onDelete={remove} onMore={setSheetMovie} />
+                  <WatchedCard
+                    key={movie.id}
+                    movie={movie}
+                    isOwner={isOwner}
+                    onRate={rate}
+                    onDelete={remove}
+                    onMore={setSheetMovie}
+                  />
                 ))}
               </div>
               <WatchedPagination
@@ -146,7 +171,7 @@ export default function WatchedView({ userId }: WatchedViewProps = {}) {
         </>
       )}
 
-      {sheetMovie && (
+      {isOwner && sheetMovie && (
         <WatchedActionSheet movie={sheetMovie} onClose={() => setSheetMovie(null)} onRate={rate} onDelete={remove} />
       )}
     </div>

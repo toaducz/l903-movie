@@ -20,7 +20,7 @@ export default function HistoryItem({ slug, name, image, episodeName, hideEpisod
   return (
     <Link
       href={href}
-      className='block rounded-lg overflow-hidden shadow-md hover:opacity-90  transition-shadow duration-300 '
+      className='block rounded-lg overflow-hidden shadow-md hover:opacity-90 transition-shadow duration-300 cursor-pointer'
     >
       <div className='relative w-full h-48 bg-gray-200'>
         <Image src={image} alt={name} unoptimized className='object-cover' fill />

@@ -66,6 +66,7 @@
   position: relative;
   white-space: nowrap;
   flex-shrink: 0;
+  cursor: pointer;
   transition: color 0.15s;
 }
 .dx-tab:hover {
@@ -483,9 +484,17 @@
     transform: translate(-2px, -2px) rotate(-1deg);
     box-shadow: 7px 7px 0 var(--c-yel);
   }
-  .dx-wc:hover .dx-wc-ov,
-  .dx-wc:focus-within .dx-wc-ov {
+  .dx-wc.is-owner:hover .dx-wc-ov,
+  .dx-wc.is-owner:focus-within .dx-wc-ov {
     opacity: 1;
+  }
+  .dx-wc.not-owner .dx-wc-ov,
+  .dx-wc.not-owner .dx-more,
+  .dx-wc.not-owner .dx-qk {
+    display: none !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+    visibility: hidden !important;
   }
 }
 .dx-wc-t {

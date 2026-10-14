@@ -1,5 +1,7 @@
 'use client'
 
+import Link from 'next/link'
+import { useParams } from 'next/navigation'
 import HistoryItem from '@/component/item/profile-movie-items'
 import { useAuth } from '../auth-provider'
 import { useQuery } from '@tanstack/react-query'
@@ -9,18 +11,7 @@ import SubtitleSettingsPanel from '@/component/player/subtitle-settings-panel'
 import { getSubtitleSettings, saveSubtitleSettings, DEFAULT_SUBTITLE_SETTINGS } from '@/utils/subtitle-settings'
 import type { SubtitleSettings } from '@/types/subtitle'
 import type { UserPrivacySettings } from '@/types/profile'
-
-interface ReviewMovie {
-  id: string
-  slug: string
-  name: string
-  image: string
-  score: number
-}
-
-interface ProfilePageProps {
-  userId?: string
-}
+import type { WatchedMovie } from '@/types/watched'
 
 function SectionTitle({ children }: { children: string }) {
   return (
@@ -89,7 +80,9 @@ function PrivacyToggleRow({
 
 
 // Tab "Tổng quan" của Hồ sơ: đánh giá công khai, quyền riêng tư, cài đặt phụ đề
-export default function ProfilePage({ userId }: ProfilePageProps) {
+export default function ProfilePage() {
+  const params = useParams<{ id?: string }>()
+  const userId = params?.id
   const { logout, user } = useAuth()
   const [subSettings, setSubSettings] = useState<SubtitleSettings>(DEFAULT_SUBTITLE_SETTINGS)
 
@@ -108,18 +101,25 @@ export default function ProfilePage({ userId }: ProfilePageProps) {
   }
 
   // Reviews của user mục tiêu
-  const { data: reviewsData, isLoading: isReviewsLoading } = useQuery({
-    queryKey: ['reviews', targetId],
+  // Phim đã xem có chấm điểm (1-5 sao) của user mục tiêu
+  const { data: ratedData, isLoading: isRatedLoading } = useQuery<{ data: WatchedMovie[]; is_private?: boolean }>({
+    queryKey: ['watched', 'rated', targetId],
     queryFn: async () => {
-      const url = targetId === user?.id
-        ? '/api/review?my_reviews=1&limit=10'
-        : `/api/review?user_id=${targetId}&limit=10`
+      const url = isOwner
+        ? '/api/watched?limit=10&sort=score&min_score=1'
+        : `/api/watched?user_id=${targetId}&limit=10&sort=score&min_score=1`
       const res = await fetch(url)
-      return res.json()
+      const json = await res.json()
+      if (res.status === 403 && json.is_private) {
+        return { data: [], is_private: true }
+      }
+      if (!res.ok) return { data: [] }
+      return json
     },
     enabled: Boolean(targetId)
   })
-  const reviews: ReviewMovie[] = reviewsData?.data ?? []
+  const ratedMovies: WatchedMovie[] = ratedData?.data ?? []
+  const isPrivate = Boolean(!isOwner && ratedData?.is_private)
 
   // Cài đặt riêng tư của chính chủ
   const [isUpdatingPrivacy, setIsUpdatingPrivacy] = useState(false)
@@ -158,7 +158,7 @@ export default function ProfilePage({ userId }: ProfilePageProps) {
     }
   }
 
-  if (isReviewsLoading) return <Loading />
+  if (isRatedLoading) return <Loading />
 
   return (
     <div className='max-w-4xl text-white'>
@@ -166,21 +166,42 @@ export default function ProfilePage({ userId }: ProfilePageProps) {
 
       {/* Phim đã đánh giá */}
       <section className='mb-10'>
-        <SectionTitle>Phim đã đánh giá</SectionTitle>
-        {reviews.length > 0 ? (
+        <div className='flex items-center justify-between mb-4'>
+          <SectionTitle>Phim đã đánh giá</SectionTitle>
+          {!isPrivate && ratedMovies.length > 0 && (
+            <Link
+              href={isOwner ? '/profile/watched' : `/profile/${targetId}/watched`}
+              className='text-xs sm:text-sm text-yellow-400 hover:text-yellow-300 transition-colors duration-200 cursor-pointer flex items-center gap-1 font-medium'
+            >
+              <span>Xem tất cả</span>
+              <span>&rarr;</span>
+            </Link>
+          )}
+        </div>
+        {isPrivate ? (
+          <div className='text-[var(--c-dim)] bg-[var(--c-card)] p-8 rounded-2xl border border-[var(--c-line)] text-center flex flex-col items-center justify-center gap-2'>
+            <div className='w-12 h-12 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-xl mb-1 shadow-inner'>
+              🔒
+            </div>
+            <p className='font-bold text-white text-base'>Danh sách đánh giá đang ở chế độ riêng tư</p>
+            <p className='text-xs text-[var(--c-dim)] max-w-sm'>
+              Người dùng này đã cài đặt danh sách phim đã xem & đánh giá ở chế độ riêng tư.
+            </p>
+          </div>
+        ) : ratedMovies.length > 0 ? (
           <div className='grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4'>
-            {reviews.map(review => (
-              <div key={review.id} className='relative transition-transform duration-200 hover:scale-105'>
-                <HistoryItem slug={review.slug} name={review.name} image={review.image} hideEpisode={true} />
-                <div className='absolute top-2 right-2 bg-black/80 text-yellow-500 text-sm font-bold px-3 py-1 rounded-full border border-yellow-500/50 shadow-lg flex items-center gap-1 backdrop-blur-md'>
-                  <span>★</span> {review.score}
+            {ratedMovies.map(movie => (
+              <div key={movie.id} className='relative transition-transform duration-200 hover:scale-105'>
+                <HistoryItem slug={movie.slug} name={movie.name} image={movie.image || ''} hideEpisode={true} />
+                <div className='absolute top-2 right-2 bg-black/80 text-yellow-400 text-sm font-bold px-2.5 py-0.5 rounded-full border border-yellow-500/40 shadow-lg flex items-center gap-1 backdrop-blur-md'>
+                  <span>★</span> {movie.score}
                 </div>
               </div>
             ))}
           </div>
         ) : (
           <div className='text-[var(--c-dim)] bg-[var(--c-card)] p-6 rounded-2xl border border-[var(--c-line)] text-center'>
-            {isOwner ? 'Bạn chưa tham gia đánh giá bộ phim nào.' : 'Người dùng này chưa đánh giá bộ phim nào.'}
+            {isOwner ? 'Bạn chưa chấm điểm bộ phim nào.' : 'Người dùng này chưa chấm điểm bộ phim nào.'}
           </div>
         )}
       </section>

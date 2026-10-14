@@ -11,7 +11,7 @@
 - **Unified Movie Service Layer (`src/services/movie-service.ts`):** Cổng giao tiếp duy nhất giữa UI và các nhà cung cấp API phim (KKPhim, OPhim, NguonC). Cho phép chuyển đổi nguồn chính thông qua biến môi trường `NEXT_PUBLIC_DEFAULT_SOURCE=kkphim`.
 - **Cơ chế Direct Fetch + Proxy Fallback:** Gọi API trực tiếp từ client (`fetch(fullUrl)`) đối với các nguồn hỗ trợ CORS (`phim.nguonc.com`, `phimapi.com`) sử dụng IP người dùng để vượt Cloudflare WAF (tránh bị chặn 403 khi đi qua IP Datacenter của Vercel). Fallback sang `/api/proxy` khi cần thiết.
 - **Server state:** TanStack React Query (`queryKey` prefix `movie-service-v3`); auth: React Context + HTTP-only cookies.
-- **Persistence:** Supabase (favorites, notifications, reviews), localStorage (watch history).
+- **Persistence:** Supabase (favorites, notifications, watched_movies, movie_reviews), localStorage (watch history).
 
 ## Layers
 
@@ -70,6 +70,19 @@
 2. Protected actions: Route Handlers kiểm tra session qua `getUserId(req)`.
 3. Client: `AuthProvider` sync trạng thái qua `/api/auth/me`.
 
+**Rating & Community Comments (Đã xem & Bình luận):**
+1. **Đã xem & Điểm số (Rating 1–5 sao):** Quản lý qua `watched_movies`. Là Single Source of Truth cho việc đánh giá phim và nhật ký xem phim của người dùng. Mục *"Phim đã đánh giá"* ở trang Profile lấy trực tiếp từ `watched_movies` với điều kiện `score is not null`.
+2. **Bình luận cộng đồng (Discussion Thread):** Quản lý qua `movie_reviews`. Nơi thảo luận, hỏi đáp không bắt buộc chấm điểm. Hỗ trợ cây bình luận lồng nhau qua `parent_id`.
+3. **Huy hiệu Người xem uy tín (Verified Watcher Badge):** Khi hiển thị bình luận (`GET /api/review`), backend tự động join trạng thái từ `watched_movies` để gắn huy hiệu `★ {score} · Đã xem` bên cạnh tên người bình luận nếu họ đã thực sự xem và chấm điểm phim đó.
+
+**Profile Privacy & Public Profile Architecture:**
+1. **Cài đặt quyền riêng tư:** Quản lý qua `user_privacy_settings` với hai cờ `is_history_public` và `is_watched_public`.
+2. **Chế độ hiển thị Tổng quan:** Nếu người khác tắt công khai tab Đã xem, khu vực *"Phim đã đánh giá"* ở trang Tổng quan hiển thị thẻ 🔒 thông báo chế độ riêng tư và ẩn liên kết "Xem tất cả".
+3. **Phân quyền UI (Ownership Guard):** Component `WatchedCard` và `WatchedView` nhận diện quyền sở hữu qua `isOwner = !userId || (Boolean(user?.id) && userId === user?.id)`. Khi xem người khác:
+   - Lớp phủ hover `.dx-wc-ov` (Sửa điểm, Xoá) và nút "Chấm nhanh" bị loại bỏ hoàn toàn khỏi DOM.
+   - Nút ⋯ (`WatchedActionSheet`) và dòng ghi chú bảo mật ở header không hiển thị.
+   - Hover vào card chỉ kích hoạt hiệu ứng nghiêng poster và nhấp để mở trang chi tiết phim.
+
 ---
 
-*Architecture analysis updated: 2026-08-26*
+*Architecture analysis updated: 2026-10-14*

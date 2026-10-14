@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useParams } from 'next/navigation'
 import HistoryItem from '@/component/item/profile-movie-items'
 import { getViewHistory } from '@/utils/local-storage'
 import { useAuth } from '@/app/auth-provider'
@@ -16,11 +17,9 @@ interface HistoryMovie {
   source?: string
 }
 
-interface HistoryPageProps {
-  userId?: string
-}
-
-export default function HistoryPage({ userId }: HistoryPageProps) {
+export default function HistoryPage() {
+  const params = useParams<{ id?: string }>()
+  const userId = params?.id
   const { user } = useAuth()
   const [page, setPage] = useState(1)
   const PAGE_SIZE = 12

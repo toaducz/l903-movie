@@ -39,7 +39,7 @@ export default function WatchedActionSheet({ movie, onClose, onRate, onDelete }:
       </div>
       <button type='button' className='dx-sh-row' onClick={then(() => onRate(movie))}>
         <WatchedIcon name='pen' size={20} strokeWidth={2} />
-        {movie.score ? 'Sửa điểm & ghi chú' : 'Chấm điểm & ghi chú'}
+        {movie.score ? 'Sửa điểm & bình luận' : 'Chấm điểm & bình luận'}
       </button>
       <button
         type='button'

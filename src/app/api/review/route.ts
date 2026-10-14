@@ -18,6 +18,7 @@ type ReviewRecord = {
 type ReviewNode = ReviewRecord & {
   replies: ReviewNode[]
   reply_to_username?: string
+  watched_score?: number | null
 }
 
 async function getSession(req: NextRequest) {
@@ -47,7 +48,7 @@ export async function POST(req: NextRequest) {
   // Nhận thêm parent_id từ request
   const { slug, name, image, score, review_text, user_email, parent_id } = await req.json()
 
-  if (!slug || score === undefined || !review_text) {
+  if (!slug || !review_text) {
     return NextResponse.json({ error: 'Thiếu thông tin' }, { status: 400 })
   }
 
@@ -55,9 +56,9 @@ export async function POST(req: NextRequest) {
     user_id,
     user_email: user_email || 'Người dùng ẩn danh',
     slug,
-    name,
-    image,
-    score,
+    name: name || '',
+    image: image || '',
+    score: typeof score === 'number' ? score : 0,
     review_text,
     parent_id: parent_id || null, // Cực kỳ quan trọng
     updated_at: new Date().toISOString()
@@ -169,22 +170,38 @@ export async function GET(req: NextRequest) {
 
   // Logic lấy toàn bộ comment của một phim và cấu trúc lại
   if (slug) {
-    const { data: flatData, error } = await supabase
-      .from('movie_reviews')
-      .select('*')
-      .eq('slug', slug)
-      .order('updated_at', { ascending: true }) // Sắp xếp cũ trước mới sau để dễ dựng cây
+    const [{ data: flatData, error }, { data: watchedData }] = await Promise.all([
+      supabase
+        .from('movie_reviews')
+        .select('*')
+        .eq('slug', slug)
+        .order('updated_at', { ascending: true }),
+      supabase
+        .from('watched_movies')
+        .select('user_id, score')
+        .eq('slug', slug)
+        .not('score', 'is', null)
+    ])
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
-    // Biến đổi dữ liệu phẳng thành cấu trúc lồng nhau (Nested)
-    const structuredData = buildCommentTree(flatData)
+    const watchedScoreMap: Record<string, number> = {}
+    if (watchedData) {
+      for (const w of watchedData) {
+        if (w.user_id && typeof w.score === 'number') {
+          watchedScoreMap[w.user_id] = w.score
+        }
+      }
+    }
+
+    // Biến đổi dữ liệu phẳng thành cấu trúc lồng nhau (Nested) kèm watched_score
+    const structuredData = buildCommentTree(flatData || [], watchedScoreMap)
 
     return NextResponse.json({
       data: structuredData,
-      count: flatData.length
+      count: flatData?.length || 0
     })
   }
 
@@ -194,13 +211,20 @@ export async function GET(req: NextRequest) {
 /**
  * Hàm hỗ trợ chuyển đổi mảng phẳng thành cấu trúc cây 1 tầng (tránh Infinite Nesting)
  */
-function buildCommentTree(flatComments: ReviewRecord[]): ReviewNode[] {
+function buildCommentTree(
+  flatComments: ReviewRecord[],
+  watchedScoreMap: Record<string, number> = {}
+): ReviewNode[] {
   const map: Record<string, ReviewNode> = {}
   const roots: ReviewNode[] = []
 
   // Bước 1: Tạo map để truy xuất nhanh theo ID
   flatComments.forEach(comment => {
-    map[comment.id] = { ...comment, replies: [] }
+    map[comment.id] = {
+      ...comment,
+      watched_score: watchedScoreMap[comment.user_id] ?? null,
+      replies: []
+    }
   })
 
   // Bước 2: Duyệt qua từng comment

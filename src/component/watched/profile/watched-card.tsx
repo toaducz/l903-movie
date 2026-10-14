@@ -34,20 +34,21 @@ type Props = {
   onRate: (movie: WatchedMovie) => void
   onDelete: (movie: WatchedMovie) => void
   onMore: (movie: WatchedMovie) => void
+  isOwner?: boolean
 }
 
-export default function WatchedCard({ movie, onRate, onDelete, onMore }: Props) {
+export default function WatchedCard({ movie, onRate, onDelete, onMore, isOwner = false }: Props) {
   const href = getMovieDetailHref(movie.slug, movie.source)
   const rated = movie.score !== null
 
   return (
-    <div className='dx-wc'>
+    <div className={`dx-wc ${isOwner ? 'is-owner' : 'not-owner'}`}>
       <div className='dx-pst'>
-        <Link href={href} className='absolute inset-0' aria-label={movie.name} tabIndex={-1}>
+        <Link href={href} className='absolute inset-0 cursor-pointer' aria-label={movie.name} tabIndex={-1}>
           {movie.image && (
             <Image
               src={movie.image}
-              alt=''
+              alt={movie.name}
               fill
               unoptimized
               sizes='(min-width:1280px) 16vw, (min-width:768px) 22vw, 45vw'
@@ -61,30 +62,39 @@ export default function WatchedCard({ movie, onRate, onDelete, onMore }: Props) 
         ) : (
           <span className='dx-sc s0'>Chưa chấm</span>
         )}
-        {!rated && (
-          <button type='button' className='dx-qk' onClick={() => onRate(movie)}>
+        {isOwner && !rated && (
+          <button type='button' className='dx-qk cursor-pointer' onClick={() => onRate(movie)}>
             <WatchedIcon name='star' size={13} strokeWidth={2.6} />
             Chấm nhanh
           </button>
         )}
         <SourceBadge source={movie.source} className='absolute bottom-2 right-2 pointer-events-none' />
 
-        <div className='dx-wc-ov'>
-          <button type='button' className='dx-b dx-b-sm dx-b-yel' onClick={() => onRate(movie)}>
-            <WatchedIcon name='pen' size={15} />
-            {rated ? 'Sửa điểm' : 'Chấm điểm'}
-          </button>
-          <button type='button' className='dx-b dx-b-sm dx-b-gh' onClick={() => onDelete(movie)}>
-            <WatchedIcon name='trash' size={15} />
-            Xoá
-          </button>
-        </div>
-        <button type='button' className='dx-more' aria-label={`Thao tác: ${movie.name}`} onClick={() => onMore(movie)}>
-          <WatchedIcon name='dots' size={18} />
-        </button>
+        {isOwner && (
+          <>
+            <div className='dx-wc-ov'>
+              <button type='button' className='dx-b dx-b-sm dx-b-yel cursor-pointer' onClick={() => onRate(movie)}>
+                <WatchedIcon name='pen' size={15} />
+                {rated ? 'Sửa điểm' : 'Chấm điểm'}
+              </button>
+              <button type='button' className='dx-b dx-b-sm dx-b-gh cursor-pointer' onClick={() => onDelete(movie)}>
+                <WatchedIcon name='trash' size={15} />
+                Xoá
+              </button>
+            </div>
+            <button
+              type='button'
+              className='dx-more cursor-pointer'
+              aria-label={`Thao tác: ${movie.name}`}
+              onClick={() => onMore(movie)}
+            >
+              <WatchedIcon name='dots' size={18} />
+            </button>
+          </>
+        )}
       </div>
 
-      <Link href={href} className='dx-wc-t hover:text-[var(--c-yel)]' title={movie.name}>
+      <Link href={href} className='dx-wc-t hover:text-[var(--c-yel)] cursor-pointer' title={movie.name}>
         {movie.name}
       </Link>
       {movie.note ? (

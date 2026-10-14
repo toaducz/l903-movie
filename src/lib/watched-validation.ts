@@ -63,7 +63,7 @@ export function parseWatchedUpsert(body: unknown): ValidationResult<WatchedUpser
   }
 
   if (typeof b.note === 'string' && b.note.trim().length > WATCHED_NOTE_MAX) {
-    return fail(`Ghi chú tối đa ${WATCHED_NOTE_MAX} ký tự`)
+    return fail(`Bình luận tối đa ${WATCHED_NOTE_MAX} ký tự`)
   }
 
   let year: number | null | undefined

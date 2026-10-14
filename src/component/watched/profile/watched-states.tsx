@@ -19,24 +19,32 @@ export function WatchedGridSkeleton({ count = 12 }: { count?: number }) {
   )
 }
 
-export function WatchedEmpty() {
+export function WatchedEmpty({ isOwner = true }: { isOwner?: boolean }) {
   return (
     <div className='dx-empty'>
       <div className='relative'>
         <div className='dx-img'>
-          <Image src={emptyGif} alt='' fill unoptimized className='object-cover' />
+          <Image src={emptyGif} alt='Trống trơn' fill unoptimized className='object-cover' />
         </div>
         <span className='c-sticker'>TRỐNG TRƠN!</span>
       </div>
-      <h3>Chưa có phim nào trong Đã xem</h3>
+      <h3>{isOwner ? 'Chưa có phim nào trong Đã xem' : 'Chưa có phim nào trong danh sách Đã xem'}</h3>
       <p>
-        Xem xong phim nào thì bấm <b className='text-[var(--c-cyan)]'>✓</b> để lưu lại kèm điểm riêng. Lần sau ai hỏi
-        &quot;phim nào hay?&quot; là có ngay danh sách.
+        {isOwner ? (
+          <>
+            Xem xong phim nào thì bấm <b className='text-[var(--c-cyan)]'>✓</b> để lưu lại kèm điểm riêng. Lần sau ai hỏi
+            &quot;phim nào hay?&quot; là có ngay danh sách.
+          </>
+        ) : (
+          'Người dùng này chưa lưu bộ phim nào vào danh sách đã xem.'
+        )}
       </p>
-      <Link href='/' className='dx-b dx-b-pri'>
-        <WatchedIcon name='search' size={16} strokeWidth={2.6} />
-        Khám phá phim
-      </Link>
+      {isOwner && (
+        <Link href='/' className='dx-b dx-b-pri cursor-pointer'>
+          <WatchedIcon name='search' size={16} strokeWidth={2.6} />
+          Khám phá phim
+        </Link>
+      )}
     </div>
   )
 }

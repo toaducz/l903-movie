@@ -41,14 +41,15 @@ export default function ProfileShell({ children, targetUserId: propTargetUserId 
   const effectiveUserId = targetUserId || user?.id
   const loggedIn = Boolean(user?.id)
 
-  // 1. Nếu xem người khác -> fetch profile công khai
+  // 1. Nếu xem người khác -> fetch profile công khai (cache 5 phút để chuyển tab mượt mà)
   const { data: publicProfileData } = useQuery<{ data: PublicUserProfile }>({
     queryKey: ['public_profile', targetUserId],
     queryFn: async () => {
       const res = await fetch(`/api/user/${targetUserId}/public-profile`)
       return res.json()
     },
-    enabled: Boolean(!isOwner && targetUserId)
+    enabled: Boolean(!isOwner && targetUserId),
+    staleTime: 5 * 60 * 1000
   })
   const publicProfile = publicProfileData?.data
 
@@ -59,7 +60,7 @@ export default function ProfileShell({ children, targetUserId: propTargetUserId 
   const joinedYear = isOwner ? selfIdentity.joinedYear : publicProfile?.joinedYear
   const initial = isOwner ? selfIdentity.initial : publicProfile?.initial || '?'
 
-  // 2. Favorite count
+  // 2. Favorite count (cache 2 phút)
   const { data: favoriteCount } = useQuery({
     queryKey: [FAVORITE_COUNT_QUERY_KEY, effectiveUserId],
     queryFn: async () => {
@@ -71,7 +72,8 @@ export default function ProfileShell({ children, targetUserId: propTargetUserId 
       const json = (await res.json()) as { count?: number | null }
       return json.count ?? 0
     },
-    enabled: Boolean(effectiveUserId)
+    enabled: Boolean(effectiveUserId),
+    staleTime: 2 * 60 * 1000
   })
 
   // 3. Watched summary (chỉ fetch khi là chính chủ hoặc người đó mở public)
@@ -85,10 +87,13 @@ export default function ProfileShell({ children, targetUserId: propTargetUserId 
       if (!res.ok) return null
       return res.json()
     },
-    enabled: shouldFetchWatched
+    enabled: shouldFetchWatched,
+    staleTime: 2 * 60 * 1000
   })
 
   const basePath = isOwner ? '/profile' : `/profile/${targetUserId}`
+  const isHistoryActive = pathname.endsWith('/history')
+  const isWatchedActive = pathname.endsWith('/watched')
 
   // 4. Xây dựng danh sách tabs theo quyền riêng tư
   const tabs: Tab[] = [
@@ -96,13 +101,13 @@ export default function ProfileShell({ children, targetUserId: propTargetUserId 
     { href: `${basePath}/favorite`, label: 'Yêu thích', count: favoriteCount }
   ]
 
-  // Tab Lịch sử: chính chủ luôn thấy, người khác chỉ thấy khi chủ nhà bật public
-  if (isOwner || publicProfile?.privacy.is_history_public) {
+  // Tab Lịch sử: chính chủ luôn thấy, người khác chỉ thấy khi chủ nhà bật public hoặc đang đứng ở route đó
+  if (isOwner || publicProfile?.privacy.is_history_public || isHistoryActive) {
     tabs.push({ href: `${basePath}/history`, label: 'Lịch sử' })
   }
 
-  // Tab Đã xem xong: chính chủ luôn thấy, người khác chỉ thấy khi chủ nhà bật public
-  if (isOwner || publicProfile?.privacy.is_watched_public) {
+  // Tab Đã xem xong: chính chủ luôn thấy, người khác chỉ thấy khi chủ nhà bật public hoặc đang đứng ở route đó
+  if (isOwner || publicProfile?.privacy.is_watched_public || isWatchedActive) {
     tabs.push({ href: `${basePath}/watched`, label: 'Đã xem xong!', count: watchedSummary?.total })
   }
 
@@ -146,7 +151,7 @@ export default function ProfileShell({ children, targetUserId: propTargetUserId 
               <Link
                 key={tab.href}
                 href={tab.href}
-                className={`dx-tab ${active ? 'on' : ''}`}
+                className={`dx-tab cursor-pointer ${active ? 'on' : ''}`}
                 aria-current={active ? 'page' : undefined}
               >
                 {tab.label}

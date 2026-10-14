@@ -126,7 +126,7 @@ export default function RatingDialog({ target, onClose, onSaved, onDelete }: Pro
         {target.meta && <div className='text-xs text-[var(--c-dim)]'>{target.meta}</div>}
         <div className='inline-flex gap-1.5 items-center text-xs font-semibold text-[var(--c-cyan)] mt-1.5'>
           <WatchedIcon name='lock' size={13} />
-          Điểm & ghi chú chỉ mình bạn thấy
+          Điểm & bình luận chỉ mình bạn thấy nếu không public
         </div>
       </div>
     </div>

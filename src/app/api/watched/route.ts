@@ -22,12 +22,16 @@ const serverError = (context: string, error: unknown) => {
  */
 export async function GET(req: NextRequest) {
   const auth = await getUserSupabase(req)
-  if (!auth) return unauthorized()
-  const { client, userId } = auth
   const { searchParams } = new URL(req.url)
+  const paramUserId = searchParams.get('user_id')
 
-  const targetUserId = searchParams.get('user_id') || userId
-  const isSelf = targetUserId === userId
+  // Nếu không chỉ định user_id thì bắt buộc phải đăng nhập (để xem của chính mình)
+  if (!paramUserId && !auth) return unauthorized()
+
+  const targetUserId = paramUserId || auth?.userId
+  if (!targetUserId) return unauthorized()
+
+  const isSelf = Boolean(auth?.userId && targetUserId === auth.userId)
 
   if (!isSelf) {
     const { data: privacy } = await supabase
@@ -44,8 +48,8 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  // Nếu xem của người khác, dùng supabase client server để query
-  const queryDb = isSelf ? client : supabase
+  // Nếu xem của chính mình dùng authenticated client, xem người khác dùng anon client
+  const queryDb = isSelf && auth ? auth.client : supabase
 
   const slug = searchParams.get('slug')
   if (slug !== null) {

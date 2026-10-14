@@ -73,7 +73,7 @@ export const getWatchedSummary = (enabled = true, userId?: string) =>
     enabled
   })
 
-/** Đánh dấu đã xem hoặc sửa điểm / ghi chú (trường không truyền thì giữ nguyên) */
+/** Đánh dấu đã xem hoặc sửa điểm / bình luận (trường không truyền thì giữ nguyên) */
 export const saveWatched = async (input: WatchedUpsertInput): Promise<WatchedMovie> =>
   (await callWatchedApi<{ data: WatchedMovie }>({ method: 'POST', body: JSON.stringify(input) })).data
 

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useParams } from 'next/navigation'
 import HistoryItem from '@/component/item/profile-movie-items'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import Loading from '@/component/status/loading'
@@ -22,13 +23,11 @@ interface FavoriteResponse {
   totalPages: number
 }
 
-interface FavoritePageProps {
-  userId?: string
-}
-
 const PAGE_SIZE = 18
 
-export default function FavoritePage({ userId }: FavoritePageProps) {
+export default function FavoritePage() {
+  const params = useParams<{ id?: string }>()
+  const userId = params?.id
   const queryClient = useQueryClient()
   const { user } = useAuth()
   const [page, setPage] = useState<number>(1)
