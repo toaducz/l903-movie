@@ -104,10 +104,11 @@ export default function ContinueWatchingSection() {
     } catch (err) {
       console.error('Xóa khỏi danh sách đang xem thất bại:', err)
       queryClient.invalidateQueries({ queryKey: ['continue_watching'] })
+      throw err
     }
   }
 
-  const { finish, doneKey, leavingKey } = useFinishFromContinue({
+  const { finish, remove, doneKey, leavingKey } = useFinishFromContinue({
     removeFromContinue,
     refreshContinue: () => queryClient.invalidateQueries({ queryKey: ['continue_watching'] })
   })
@@ -232,13 +233,14 @@ export default function ContinueWatchingSection() {
               }
             >
               {/* Cụm nút góc trên trái: ✓ Xem xong · X Xoá (ngoài Link để không điều hướng) */}
-              {doneKey !== continueKey(item) && (
+              {doneKey !== continueKey(item) && leavingKey !== continueKey(item) && (
                 <div className='dx-cc-acts'>
                   <button
                     type='button'
-                    className='dx-ib dx-ib-ok'
+                    className='dx-ib dx-ib-ok cursor-pointer'
                     aria-label={`Đánh dấu xem xong ${item.name}`}
                     onClick={() => finish(item)}
+                    disabled={Boolean(doneKey || leavingKey)}
                   >
                     <WatchedIcon name='check' size={15} strokeWidth={3} />
                     <span className='dx-tip' aria-hidden='true'>
@@ -247,9 +249,11 @@ export default function ContinueWatchingSection() {
                   </button>
                   <button
                     type='button'
-                    className='dx-ib dx-ib-x'
+                    className='dx-ib dx-ib-x cursor-pointer'
                     aria-label={`Xoá ${item.name} khỏi Đang xem`}
-                    onClick={() => removeFromContinue(item)}
+                    title='Xoá khỏi Đang xem'
+                    onClick={() => remove(item)}
+                    disabled={Boolean(doneKey || leavingKey)}
                   >
                     <WatchedIcon name='x' size={13} strokeWidth={2.6} />
                   </button>
