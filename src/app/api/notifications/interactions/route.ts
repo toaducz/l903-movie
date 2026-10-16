@@ -16,12 +16,15 @@ export async function GET(req: NextRequest) {
   const user_id = await getUserId(req)
   if (!user_id) return NextResponse.json({ error: 'Chưa đăng nhập' }, { status: 401 })
 
-  // 1. Lấy các thông báo reply gửi đích danh cho user
+  const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
+
+  // 1. Lấy các thông báo reply gửi đích danh cho user trong 30 ngày
   const { data: repliesData, error: repliesError } = await supabase
     .from('user_notifications')
     .select('id, slug, source, movie_name, episode_name, type, sender_name, content, is_read, created_at')
     .eq('user_id', user_id)
     .eq('type', 'reply')
+    .gte('created_at', thirtyDaysAgo)
     .order('created_at', { ascending: false })
     .limit(15)
 
@@ -29,10 +32,11 @@ export async function GET(req: NextRequest) {
     console.error('[api/notifications/interactions] Lỗi lấy replies:', repliesError)
   }
 
-  // 2. Lấy hoạt động cộng đồng gần nhất (review hoặc đã xem)
+  // 2. Lấy hoạt động cộng đồng gần nhất trong 30 ngày (review hoặc đã xem)
   const { data: activitiesData, error: activitiesError } = await supabase
     .from('community_activities')
     .select('id, actor_id, actor_name, actor_avatar, action_type, slug, movie_name, score, content, created_at')
+    .gte('created_at', thirtyDaysAgo)
     .order('created_at', { ascending: false })
     .limit(20)
 

@@ -131,16 +131,20 @@ export async function POST(req: NextRequest) {
 
     if (privacy?.is_watched_public) {
       const watched = data as WatchedMovie
-      await auth.client.from('community_activities').insert({
-        actor_id: auth.userId,
-        actor_name: auth.name || 'Thành viên',
-        actor_avatar: auth.avatarUrl || null,
-        action_type: 'watched',
-        slug: watched.slug,
-        movie_name: watched.name,
-        score: watched.score ?? null,
-        content: watched.note ?? null
-      })
+      await auth.client.from('community_activities').upsert(
+        {
+          actor_id: auth.userId,
+          actor_name: auth.name || 'Thành viên',
+          actor_avatar: auth.avatarUrl || null,
+          action_type: 'watched',
+          slug: watched.slug,
+          movie_name: watched.name,
+          score: watched.score ?? null,
+          content: watched.note ?? null,
+          created_at: new Date().toISOString()
+        },
+        { onConflict: 'actor_id,slug,action_type' }
+      )
     }
   } catch (activityErr) {
     console.error('[api/watched] Ghi community activity thất bại:', activityErr)
@@ -159,6 +163,18 @@ export async function DELETE(req: NextRequest) {
 
   const { error } = await auth.client.from('watched_movies').delete().eq('user_id', auth.userId).eq('slug', body.slug)
   if (error) return serverError('delete', error)
+
+  // Xóa luôn hoạt động tương ứng nếu có
+  try {
+    await auth.client
+      .from('community_activities')
+      .delete()
+      .eq('actor_id', auth.userId)
+      .eq('slug', body.slug)
+      .eq('action_type', 'watched')
+  } catch (deleteActivityErr) {
+    console.error('[api/watched] Xóa community activity thất bại:', deleteActivityErr)
+  }
 
   return NextResponse.json({ ok: true })
 }

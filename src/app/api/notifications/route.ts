@@ -30,6 +30,10 @@ export async function GET(req: NextRequest) {
     query = query.or('type.eq.episode,type.is.null')
   }
 
+  // Chỉ lấy thông báo trong 30 ngày gần nhất
+  const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
+  query = query.gte('created_at', thirtyDaysAgo)
+
   const { data, error } = await query.order('created_at', { ascending: false }).limit(20)
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })

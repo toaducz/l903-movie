@@ -107,17 +107,21 @@ export async function POST(req: NextRequest) {
         })
       }
     } else {
-      // 2. Trường hợp là Review gốc: Ghi nhận sự kiện cộng đồng
+      // 2. Trường hợp là Review gốc: Ghi nhận sự kiện cộng đồng (Upsert chống trùng)
       const actorName = user_email ? user_email.split('@')[0] : 'Thành viên'
-      await supabase.from('community_activities').insert({
-        actor_id: user_id,
-        actor_name: actorName,
-        action_type: 'review',
-        slug,
-        movie_name: name || 'Phim',
-        score: typeof score === 'number' && score > 0 ? score : null,
-        content: review_text.slice(0, 200)
-      })
+      await supabase.from('community_activities').upsert(
+        {
+          actor_id: user_id,
+          actor_name: actorName,
+          action_type: 'review',
+          slug,
+          movie_name: name || 'Phim',
+          score: typeof score === 'number' && score > 0 ? score : null,
+          content: review_text.slice(0, 200),
+          created_at: new Date().toISOString()
+        },
+        { onConflict: 'actor_id,slug,action_type' }
+      )
     }
   } catch (notifErr) {
     console.error('[api/review] Lỗi tạo thông báo review/reply:', notifErr)

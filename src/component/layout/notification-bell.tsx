@@ -44,11 +44,34 @@ export default function NotificationBell() {
     staleTime: 60 * 1000
   })
 
+  // 3. Theo dõi mốc thời gian xem tab Cộng đồng lần cuối (localStorage)
+  const [lastSeenCommunity, setLastSeenCommunity] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem('last_seen_community_at')
+      if (stored) {
+        setLastSeenCommunity(stored)
+      } else {
+        const now = new Date().toISOString()
+        localStorage.setItem('last_seen_community_at', now)
+        setLastSeenCommunity(now)
+      }
+    }
+  }, [])
+
   const episodeNotifs = episodesData?.data ?? []
   const interactionNotifs = interactionsData?.data ?? []
 
   const unreadEpisodesCount = episodeNotifs.filter(n => !n.is_read).length
-  const unreadInteractionsCount = interactionNotifs.filter(n => n.isDirectReplyToMe && !n.is_read).length
+  const unreadRepliesCount = interactionNotifs.filter(n => n.isDirectReplyToMe && !n.is_read).length
+  const unreadCommunityCount = lastSeenCommunity
+    ? interactionNotifs.filter(
+        n => !n.isDirectReplyToMe && new Date(n.created_at).getTime() > new Date(lastSeenCommunity).getTime()
+      ).length
+    : 0
+
+  const unreadInteractionsCount = unreadRepliesCount + unreadCommunityCount
   const totalUnreadCount = unreadEpisodesCount + unreadInteractionsCount
 
   // Mutation: đánh dấu đã đọc theo loại tab
@@ -63,6 +86,14 @@ export default function NotificationBell() {
       queryClient.invalidateQueries({ queryKey: ['notifications'] })
     }
   })
+
+  const markCommunitySeen = () => {
+    const now = new Date().toISOString()
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('last_seen_community_at', now)
+    }
+    setLastSeenCommunity(now)
+  }
 
   // Đóng dropdown khi click ra ngoài
   useEffect(() => {
@@ -80,8 +111,9 @@ export default function NotificationBell() {
     if (!open) {
       if (activeTab === 'episodes' && unreadEpisodesCount > 0) {
         markRead.mutate('episode')
-      } else if (activeTab === 'interactions' && unreadInteractionsCount > 0) {
-        markRead.mutate('reply')
+      } else if (activeTab === 'interactions') {
+        if (unreadRepliesCount > 0) markRead.mutate('reply')
+        if (unreadCommunityCount > 0) markCommunitySeen()
       }
     }
     setOpen(prev => !prev)
@@ -92,8 +124,9 @@ export default function NotificationBell() {
     setActiveTab(tab)
     if (tab === 'episodes' && unreadEpisodesCount > 0) {
       markRead.mutate('episode')
-    } else if (tab === 'interactions' && unreadInteractionsCount > 0) {
-      markRead.mutate('reply')
+    } else if (tab === 'interactions') {
+      if (unreadRepliesCount > 0) markRead.mutate('reply')
+      if (unreadCommunityCount > 0) markCommunitySeen()
     }
   }
 
@@ -257,15 +290,25 @@ export default function NotificationBell() {
                   const isReview = item.type === 'community_review'
                   const isWatched = item.type === 'community_watched'
 
+                  const isNew = item.isDirectReplyToMe
+                    ? !item.is_read
+                    : Boolean(lastSeenCommunity && new Date(item.created_at).getTime() > new Date(lastSeenCommunity).getTime())
+
                   return (
                     <button
                       key={item.id}
                       type='button'
                       onClick={() => handleClickNotification(item.slug)}
-                      className={`w-full text-left px-4 py-3 flex items-start gap-3 transition-colors duration-200 cursor-pointer hover:bg-white/5 ${
+                      className={`w-full text-left px-3.5 py-3 flex items-start gap-2.5 transition-colors duration-200 cursor-pointer hover:bg-white/5 ${
                         item.isDirectReplyToMe ? 'bg-[var(--c-pink)]/10 border-l-2 border-[var(--c-pink)]' : ''
                       }`}
                     >
+                      {/* Dot báo mới */}
+                      <span
+                        className='mt-3 w-1.5 h-1.5 rounded-full shrink-0'
+                        style={{ background: isNew ? 'var(--c-pink)' : 'transparent' }}
+                      />
+
                       {/* Icon hoặc avatar */}
                       <div className='mt-0.5 shrink-0'>
                         {isReply && (
