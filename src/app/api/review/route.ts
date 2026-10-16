@@ -82,6 +82,47 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 
+  // Tạo thông báo phụ trợ (Fault-tolerant, không chặn kết quả trả về)
+  try {
+    if (parent_id) {
+      // 1. Trường hợp là Reply: Bắn thông báo cá nhân cho chủ review gốc
+      const { data: parentReview } = await supabase
+        .from('movie_reviews')
+        .select('user_id, name, slug')
+        .eq('id', parent_id)
+        .maybeSingle()
+
+      if (parentReview && parentReview.user_id && parentReview.user_id !== user_id) {
+        const senderName = user_email ? user_email.split('@')[0] : 'Thành viên'
+        await supabase.from('user_notifications').insert({
+          user_id: parentReview.user_id,
+          slug: slug || parentReview.slug,
+          source: 'kkphim',
+          movie_name: name || parentReview.name || 'Phim',
+          episode_name: 'Bình luận',
+          type: 'reply',
+          sender_name: senderName,
+          content: review_text.slice(0, 150),
+          is_read: false
+        })
+      }
+    } else {
+      // 2. Trường hợp là Review gốc: Ghi nhận sự kiện cộng đồng
+      const actorName = user_email ? user_email.split('@')[0] : 'Thành viên'
+      await supabase.from('community_activities').insert({
+        actor_id: user_id,
+        actor_name: actorName,
+        action_type: 'review',
+        slug,
+        movie_name: name || 'Phim',
+        score: typeof score === 'number' && score > 0 ? score : null,
+        content: review_text.slice(0, 200)
+      })
+    }
+  } catch (notifErr) {
+    console.error('[api/review] Lỗi tạo thông báo review/reply:', notifErr)
+  }
+
   return NextResponse.json({ data, success: true })
 }
 

@@ -121,6 +121,31 @@ export async function POST(req: NextRequest) {
     .single()
   if (error) return serverError('upsert', error)
 
+  // Nếu user để danh sách xem phim công khai -> ghi lại vào community_activities
+  try {
+    const { data: privacy } = await supabase
+      .from('user_privacy_settings')
+      .select('is_watched_public')
+      .eq('user_id', auth.userId)
+      .maybeSingle()
+
+    if (privacy?.is_watched_public) {
+      const watched = data as WatchedMovie
+      await auth.client.from('community_activities').insert({
+        actor_id: auth.userId,
+        actor_name: auth.name || 'Thành viên',
+        actor_avatar: auth.avatarUrl || null,
+        action_type: 'watched',
+        slug: watched.slug,
+        movie_name: watched.name,
+        score: watched.score ?? null,
+        content: watched.note ?? null
+      })
+    }
+  } catch (activityErr) {
+    console.error('[api/watched] Ghi community activity thất bại:', activityErr)
+  }
+
   return NextResponse.json({ data: data as WatchedMovie })
 }
 

@@ -9,18 +9,28 @@ async function setSession(req: NextRequest) {
   await supabase.auth.setSession({ access_token, refresh_token: refresh_token || '' })
 }
 
-/** GET /api/notifications - Lấy danh sách thông báo */
+/** GET /api/notifications - Lấy danh sách thông báo (hỗ trợ lọc type=episode hoặc type=reply) */
 export async function GET(req: NextRequest) {
   await setSession(req)
   const user_id = await getUserId(req)
   if (!user_id) return NextResponse.json({ error: 'Chưa đăng nhập' }, { status: 401 })
 
-  const { data, error } = await supabase
+  const typeParam = req.nextUrl.searchParams.get('type')
+  let query = supabase
     .from('user_notifications')
-    .select('id, slug, source, movie_name, episode_name, is_read, created_at')
+    .select('id, slug, source, movie_name, episode_name, type, sender_name, content, is_read, created_at')
     .eq('user_id', user_id)
-    .order('created_at', { ascending: false })
-    .limit(20)
+
+  if (typeParam === 'reply') {
+    query = query.eq('type', 'reply')
+  } else if (typeParam === 'episode') {
+    query = query.or('type.eq.episode,type.is.null')
+  } else if (typeParam !== 'all') {
+    // Mặc định nếu không truyền: lấy thông báo tập mới
+    query = query.or('type.eq.episode,type.is.null')
+  }
+
+  const { data, error } = await query.order('created_at', { ascending: false }).limit(20)
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return NextResponse.json({ data })
@@ -36,11 +46,19 @@ export async function PUT(req: NextRequest) {
 
   // Đánh dấu tất cả
   if (body.all === true) {
-    const { error } = await supabase
+    let updateQuery = supabase
       .from('user_notifications')
       .update({ is_read: true })
       .eq('user_id', user_id)
       .eq('is_read', false)
+
+    if (body.type === 'reply') {
+      updateQuery = updateQuery.eq('type', 'reply')
+    } else if (body.type === 'episode') {
+      updateQuery = updateQuery.or('type.eq.episode,type.is.null')
+    }
+
+    const { error } = await updateQuery
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
     return NextResponse.json({ ok: true })

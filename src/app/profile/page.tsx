@@ -224,7 +224,7 @@ export default function ProfilePage() {
 
           <PrivacyToggleRow
             title='Phim đã xem xong!'
-            description='Cho phép các thành viên khác xem danh sách phim bạn đã đánh dấu xem xong và chấm điểm.'
+            description='Cho phép các thành viên khác xem danh sách phim bạn đã đánh dấu xem xong và gửi thông báo hoạt động tới cộng đồng khi bạn hoàn thành một bộ phim.'
             enabled={Boolean(privacyData?.is_watched_public)}
             disabled={isToggleDisabled}
             onChange={val => handleTogglePrivacy('is_watched_public', val)}
