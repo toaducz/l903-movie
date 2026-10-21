@@ -6,7 +6,7 @@ import { summarizeWatched, type WatchedSummaryRow } from '@/lib/watched-summary'
 import type { WatchedListResponse, WatchedMovie } from '@/types/watched'
 
 const COLUMNS =
-  'id, slug, source, name, origin_name, image, year, categories, countries, score, note, watched_at, updated_at'
+  'id, slug, source, name, origin_name, image, year, categories, countries, score, watched_at, updated_at'
 
 const unauthorized = () => NextResponse.json({ error: 'Bạn cần đăng nhập' }, { status: 401 })
 const badRequest = (error: string) => NextResponse.json({ error }, { status: 400 })
@@ -123,7 +123,7 @@ export async function POST(req: NextRequest) {
 
   const watched = data as WatchedMovie
 
-  // Lấy privacy setting của user
+  // Lấy privacy setting của user để ghi vào community_activities
   const { data: privacy } = await supabase
     .from('user_privacy_settings')
     .select('is_watched_public')
@@ -131,61 +131,6 @@ export async function POST(req: NextRequest) {
     .maybeSingle()
 
   const isWatchedPublic = privacy?.is_watched_public ?? false
-
-  // [NEW] Sync review gốc nếu có note
-  try {
-    if (parsed.value.note && parsed.value.note.trim()) {
-      // Check xem đã có review gốc chưa
-      const { data: existingReview } = await auth.client
-        .from('movie_reviews')
-        .select('id, watched_movie_id')
-        .eq('user_id', auth.userId)
-        .eq('slug', watched.slug)
-        .is('parent_id', null)
-        .maybeSingle()
-
-      if (existingReview) {
-        // Update review hiện tại
-        await auth.client
-          .from('movie_reviews')
-          .update({
-            review_text: watched.note,
-            score: watched.score ?? 0,
-            is_private: !isWatchedPublic,
-            watched_movie_id: watched.id,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', existingReview.id)
-      } else {
-        // Insert review mới
-        await auth.client.from('movie_reviews').insert({
-          user_id: auth.userId,
-          user_email: auth.email || 'user',
-          slug: watched.slug,
-          name: watched.name,
-          image: watched.image || '',
-          score: watched.score ?? 0,
-          review_text: watched.note,
-          parent_id: null,
-          is_private: !isWatchedPublic,
-          watched_movie_id: watched.id,
-          updated_at: new Date().toISOString()
-        })
-      }
-    } else if (parsed.value.note === null || (parsed.value.note !== undefined && !parsed.value.note.trim())) {
-      // Nếu xoá note (gửi note=null hoặc note='') → xoá review gốc liên quan
-      await auth.client
-        .from('movie_reviews')
-        .delete()
-        .eq('user_id', auth.userId)
-        .eq('slug', watched.slug)
-        .is('parent_id', null)
-        .not('watched_movie_id', 'is', null) // Chỉ xoá review được sync từ watched
-    }
-  } catch (reviewSyncErr) {
-    console.error('[api/watched] Sync review thất bại (non-critical):', reviewSyncErr)
-    // Không block POST, chỉ log warning
-  }
 
   // Nếu user để danh sách xem phim công khai -> ghi lại vào community_activities
   try {
@@ -199,7 +144,7 @@ export async function POST(req: NextRequest) {
           slug: watched.slug,
           movie_name: watched.name,
           score: watched.score ?? null,
-          content: watched.note ?? null,
+          content: null, // No note anymore
           created_at: new Date().toISOString()
         },
         { onConflict: 'actor_id,slug,action_type' }
@@ -222,19 +167,6 @@ export async function DELETE(req: NextRequest) {
 
   const { error } = await auth.client.from('watched_movies').delete().eq('user_id', auth.userId).eq('slug', body.slug)
   if (error) return serverError('delete', error)
-
-  // [NEW] Xoá review gốc liên quan (nếu được sync từ watched_movies)
-  try {
-    await auth.client
-      .from('movie_reviews')
-      .delete()
-      .eq('user_id', auth.userId)
-      .eq('slug', body.slug)
-      .is('parent_id', null)
-      .not('watched_movie_id', 'is', null) // Chỉ xoá review có link về watched
-  } catch (reviewDelErr) {
-    console.warn('[api/watched] Xoá review khi delete watched thất bại (non-critical):', reviewDelErr)
-  }
 
   // Xóa luôn hoạt động tương ứng nếu có
   try {

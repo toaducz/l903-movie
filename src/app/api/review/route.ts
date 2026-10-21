@@ -72,9 +72,11 @@ export async function POST(req: NextRequest) {
     // NẾU LÀ REPLY: Thực hiện Insert luôn (cho phép 1 người reply nhiều lần)
     queryResult = await supabase.from('movie_reviews').insert(payload)
   } else {
-    // NẾU LÀ REVIEW GỐC: Thực hiện Upsert như cũ
-    // Nó sẽ dựa vào cái Index mới tạo ở DB để bắt onConflict
-    queryResult = await supabase.from('movie_reviews').upsert(payload, { onConflict: 'user_id, slug' })
+    // NẾU LÀ REVIEW GỐC: Thực hiện Upsert với ON CONFLICT
+    // Unique constraint: (user_id, slug, parent_id)
+    queryResult = await supabase.from('movie_reviews').upsert(payload, {
+      onConflict: 'user_id,slug,parent_id'
+    })
   }
 
   const { data, error } = queryResult
@@ -124,38 +126,6 @@ export async function POST(req: NextRequest) {
         },
         { onConflict: 'actor_id,slug,action_type' }
       )
-
-      // [NEW] 3. Sync ngược về watched_movies (có điều kiện)
-      // Chỉ sync nếu:
-      // - User đã watched phim này
-      // - watched.note đang trống (không overwrite note hiện tại)
-      try {
-        const { data: watched } = await supabase
-          .from('watched_movies')
-          .select('id, note, score')
-          .eq('user_id', user_id)
-          .eq('slug', slug)
-          .maybeSingle()
-
-        if (watched) {
-          // Chỉ sync nếu note trống hoặc note bằng review_text hiện tại (avoid conflict)
-          const shouldSync = !watched.note || watched.note.trim() === ''
-          
-          if (shouldSync) {
-            await supabase
-              .from('watched_movies')
-              .update({
-                note: review_text.slice(0, 200), // Truncate to 200 chars
-                score: typeof score === 'number' && score > 0 ? score : watched.score,
-                updated_at: new Date().toISOString()
-              })
-              .eq('user_id', user_id)
-              .eq('slug', slug)
-          }
-        }
-      } catch (syncWatchedErr) {
-        console.warn('[api/review] Sync ngược về watched_movies thất bại (non-critical):', syncWatchedErr)
-      }
     }
   } catch (notifErr) {
     console.error('[api/review] Lỗi tạo thông báo review/reply:', notifErr)
@@ -187,39 +157,6 @@ export async function PUT(req: NextRequest) {
     .eq('user_id', user_id)
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-
-  // [NEW] Sync ngược về watched_movies nếu review có link
-  try {
-    // Lấy review để check xem có watched_movie_id không
-    const { data: review } = await supabase
-      .from('movie_reviews')
-      .select('slug, watched_movie_id, parent_id')
-      .eq('id', id)
-      .maybeSingle()
-
-    // Chỉ sync nếu là review gốc (parent_id=null) và có link về watched
-    if (review && review.watched_movie_id && !review.parent_id) {
-      const { data: watched } = await supabase
-        .from('watched_movies')
-        .select('note')
-        .eq('id', review.watched_movie_id)
-        .maybeSingle()
-
-      // Chỉ sync nếu note trống hoặc bằng review cũ (avoid overwrite)
-      if (watched && (!watched.note || watched.note.trim() === '')) {
-        await supabase
-          .from('watched_movies')
-          .update({
-            note: review_text.slice(0, 200),
-            ...(score !== undefined && { score }),
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', review.watched_movie_id)
-      }
-    }
-  } catch (syncErr) {
-    console.warn('[api/review] PUT sync ngược thất bại (non-critical):', syncErr)
-  }
 
   return NextResponse.json({ success: true })
 }
