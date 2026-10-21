@@ -19,6 +19,8 @@ interface Review {
   review_text: string
   updated_at: string
   parent_id?: string | null
+  is_private?: boolean
+  watched_movie_id?: string | null
   replies?: Review[]
   reply_to_username?: string
   watched_score?: number | null
@@ -212,6 +214,47 @@ export default function MovieReview({ slug, name, image }: MovieReviewProps) {
     const username = review.user_email.split('@')[0]
     const isOwner = user?.email === review.user_email
 
+    // [NEW] Nếu review riêng tư và không phải owner → hiển thị mosaic
+    if (review.is_private && !isOwner) {
+      return (
+        <div
+          key={review.id}
+          className={`relative bg-gray-800/40 p-5 rounded-xl border border-gray-700 ${
+            isReply ? 'mt-4 ml-4 lg:ml-12 border-l-4 border-l-blue-600' : ''
+          }`}
+        >
+          {/* Content bị blur */}
+          <div className='filter blur-md opacity-30 select-none pointer-events-none'>
+            <div className='h-6 bg-gray-600 rounded w-1/3 mb-3'></div>
+            <div className='h-4 bg-gray-700 rounded w-full mb-2'></div>
+            <div className='h-4 bg-gray-700 rounded w-5/6'></div>
+          </div>
+
+          {/* Overlay thông báo riêng tư */}
+          <div className='absolute inset-0 flex items-center justify-center rounded-xl bg-black/60 backdrop-blur-sm'>
+            <div className='text-center text-white px-4'>
+              <svg
+                xmlns='http://www.w3.org/2000/svg'
+                fill='none'
+                viewBox='0 0 24 24'
+                strokeWidth={1.5}
+                stroke='currentColor'
+                className='w-8 h-8 mx-auto mb-2 text-gray-400'
+              >
+                <path
+                  strokeLinecap='round'
+                  strokeLinejoin='round'
+                  d='M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z'
+                />
+              </svg>
+              <p className='text-sm font-medium text-gray-300'>Bình luận riêng tư</p>
+              <p className='mt-1 text-xs text-gray-400'>Chỉ tác giả xem được</p>
+            </div>
+          </div>
+        </div>
+      )
+    }
+
     return (
       <div
         key={review.id}
@@ -243,6 +286,26 @@ export default function MovieReview({ slug, name, image }: MovieReviewProps) {
                 <span className='opacity-80'>· Đã xem</span>
               </span>
             ) : null}
+
+            {/* [NEW] Badge: Từ danh sách Đã xem */}
+            {review.watched_movie_id && (
+              <span
+                className='inline-flex items-center gap-1 bg-green-500/15 text-green-400 border border-green-500/30 text-xs px-2.5 py-0.5 rounded-full font-medium'
+                title='Bình luận được đồng bộ từ danh sách Đã xem'
+              >
+                <svg
+                  xmlns='http://www.w3.org/2000/svg'
+                  fill='none'
+                  viewBox='0 0 24 24'
+                  strokeWidth={2}
+                  stroke='currentColor'
+                  className='w-3 h-3'
+                >
+                  <path strokeLinecap='round' strokeLinejoin='round' d='M4.5 12.75l6 6 9-13.5' />
+                </svg>
+                <span>Từ Đã xem</span>
+              </span>
+            )}
 
             {isReply && review.reply_to_username && (
               <span className='text-gray-400 text-sm'>

@@ -12,6 +12,8 @@ type ReviewRecord = {
   score: number
   review_text: string
   parent_id: string | null
+  is_private: boolean
+  watched_movie_id: string | null
   updated_at: string
 }
 
@@ -183,14 +185,26 @@ export async function GET(req: NextRequest) {
 
   // Lấy review của một user cụ thể (khi xem profile người khác)
   if (userIdParam) {
-    const { data, error } = await supabase
+    // [NEW] Kiểm tra xem có phải owner không
+    await getSession(req)
+    const currentUserId = await getUserId(req)
+    const isSelf = Boolean(currentUserId && currentUserId === userIdParam)
+
+    let query = supabase
       .from('movie_reviews')
       .select('*')
       .eq('user_id', userIdParam)
       .is('parent_id', null)
       .gt('score', 0)
-      .order('updated_at', { ascending: false })
 
+    // [NEW] Nếu không phải owner → chỉ xem review công khai
+    if (!isSelf) {
+      query = query.eq('is_private', false)
+    }
+
+    query = query.order('updated_at', { ascending: false })
+
+    const { data, error } = await query
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
     return NextResponse.json({ data })
   }

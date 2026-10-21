@@ -121,16 +121,55 @@ export async function POST(req: NextRequest) {
     .single()
   if (error) return serverError('upsert', error)
 
+  const watched = data as WatchedMovie
+
+  // Lấy privacy setting của user
+  const { data: privacy } = await supabase
+    .from('user_privacy_settings')
+    .select('is_watched_public')
+    .eq('user_id', auth.userId)
+    .maybeSingle()
+
+  const isWatchedPublic = privacy?.is_watched_public ?? false
+
+  // [NEW] Sync review gốc nếu có note
+  try {
+    if (parsed.value.note && parsed.value.note.trim()) {
+      // Upsert review gốc (parent_id = null) với is_private tuân theo is_watched_public
+      await auth.client.from('movie_reviews').upsert(
+        {
+          user_id: auth.userId,
+          user_email: auth.email || 'user',
+          slug: watched.slug,
+          name: watched.name,
+          image: watched.image || '',
+          score: watched.score ?? 0,
+          review_text: watched.note,
+          parent_id: null,
+          is_private: !isWatchedPublic, // Riêng tư nếu is_watched_public=false
+          watched_movie_id: watched.id, // Backward link để biết review từ watched
+          updated_at: new Date().toISOString()
+        },
+        { onConflict: 'user_id,slug' }
+      )
+    } else if (parsed.value.note === null || (parsed.value.note !== undefined && !parsed.value.note.trim())) {
+      // Nếu xoá note (gửi note=null hoặc note='') → xoá review gốc liên quan
+      await auth.client
+        .from('movie_reviews')
+        .delete()
+        .eq('user_id', auth.userId)
+        .eq('slug', watched.slug)
+        .is('parent_id', null)
+        .not('watched_movie_id', 'is', null) // Chỉ xoá review được sync từ watched
+    }
+  } catch (reviewSyncErr) {
+    console.error('[api/watched] Sync review thất bại (non-critical):', reviewSyncErr)
+    // Không block POST, chỉ log warning
+  }
+
   // Nếu user để danh sách xem phim công khai -> ghi lại vào community_activities
   try {
-    const { data: privacy } = await supabase
-      .from('user_privacy_settings')
-      .select('is_watched_public')
-      .eq('user_id', auth.userId)
-      .maybeSingle()
-
-    if (privacy?.is_watched_public) {
-      const watched = data as WatchedMovie
+    if (isWatchedPublic) {
       await auth.client.from('community_activities').upsert(
         {
           actor_id: auth.userId,
@@ -150,7 +189,7 @@ export async function POST(req: NextRequest) {
     console.error('[api/watched] Ghi community activity thất bại:', activityErr)
   }
 
-  return NextResponse.json({ data: data as WatchedMovie })
+  return NextResponse.json({ data: watched })
 }
 
 /** DELETE /api/watched  body: { slug } — xoá khỏi "Đã xem" */
@@ -163,6 +202,19 @@ export async function DELETE(req: NextRequest) {
 
   const { error } = await auth.client.from('watched_movies').delete().eq('user_id', auth.userId).eq('slug', body.slug)
   if (error) return serverError('delete', error)
+
+  // [NEW] Xoá review gốc liên quan (nếu được sync từ watched_movies)
+  try {
+    await auth.client
+      .from('movie_reviews')
+      .delete()
+      .eq('user_id', auth.userId)
+      .eq('slug', body.slug)
+      .is('parent_id', null)
+      .not('watched_movie_id', 'is', null) // Chỉ xoá review có link về watched
+  } catch (reviewDelErr) {
+    console.warn('[api/watched] Xoá review khi delete watched thất bại (non-critical):', reviewDelErr)
+  }
 
   // Xóa luôn hoạt động tương ứng nếu có
   try {
