@@ -135,9 +135,30 @@ export async function POST(req: NextRequest) {
   // [NEW] Sync review gốc nếu có note
   try {
     if (parsed.value.note && parsed.value.note.trim()) {
-      // Upsert review gốc (parent_id = null) với is_private tuân theo is_watched_public
-      await auth.client.from('movie_reviews').upsert(
-        {
+      // Check xem đã có review gốc chưa
+      const { data: existingReview } = await auth.client
+        .from('movie_reviews')
+        .select('id, watched_movie_id')
+        .eq('user_id', auth.userId)
+        .eq('slug', watched.slug)
+        .is('parent_id', null)
+        .maybeSingle()
+
+      if (existingReview) {
+        // Update review hiện tại
+        await auth.client
+          .from('movie_reviews')
+          .update({
+            review_text: watched.note,
+            score: watched.score ?? 0,
+            is_private: !isWatchedPublic,
+            watched_movie_id: watched.id,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', existingReview.id)
+      } else {
+        // Insert review mới
+        await auth.client.from('movie_reviews').insert({
           user_id: auth.userId,
           user_email: auth.email || 'user',
           slug: watched.slug,
@@ -146,12 +167,11 @@ export async function POST(req: NextRequest) {
           score: watched.score ?? 0,
           review_text: watched.note,
           parent_id: null,
-          is_private: !isWatchedPublic, // Riêng tư nếu is_watched_public=false
-          watched_movie_id: watched.id, // Backward link để biết review từ watched
+          is_private: !isWatchedPublic,
+          watched_movie_id: watched.id,
           updated_at: new Date().toISOString()
-        },
-        { onConflict: 'user_id,slug' }
-      )
+        })
+      }
     } else if (parsed.value.note === null || (parsed.value.note !== undefined && !parsed.value.note.trim())) {
       // Nếu xoá note (gửi note=null hoặc note='') → xoá review gốc liên quan
       await auth.client
