@@ -61,7 +61,25 @@ export async function GET(req: NextRequest) {
       .eq('slug', slug)
       .maybeSingle()
     if (error) return serverError('get one', error)
-    return NextResponse.json({ data: (data as WatchedMovie | null) ?? null })
+    
+    let result = data as WatchedMovie | null
+    
+    // [NEW] Fetch review if exists
+    if (result) {
+      const { data: review } = await queryDb
+        .from('movie_reviews')
+        .select('review_text')
+        .eq('user_id', targetUserId)
+        .eq('slug', slug)
+        .is('parent_id', null)
+        .maybeSingle()
+      
+      if (review) {
+        result = { ...result, note: review.review_text }
+      }
+    }
+    
+    return NextResponse.json({ data: result })
   }
 
   if (searchParams.get('summary') === '1') {
@@ -96,8 +114,30 @@ export async function GET(req: NextRequest) {
   if (listRes.error && !outOfRange) return serverError('list', listRes.error)
   const count = outOfRange ? from : (listRes.count ?? 0)
 
+  const watchedMovies = outOfRange ? [] : ((listRes.data ?? []) as WatchedMovie[])
+
+  // [NEW] Fetch reviews for these watched movies
+  let moviesWithReviews = watchedMovies
+  if (watchedMovies.length > 0) {
+    const slugs = watchedMovies.map(m => m.slug)
+    const { data: reviews } = await queryDb
+      .from('movie_reviews')
+      .select('slug, review_text, updated_at')
+      .eq('user_id', targetUserId)
+      .in('slug', slugs)
+      .is('parent_id', null) // Only root reviews
+
+    if (reviews) {
+      // Join reviews into watched movies
+      moviesWithReviews = watchedMovies.map(movie => ({
+        ...movie,
+        note: reviews.find(r => r.slug === movie.slug)?.review_text || null
+      }))
+    }
+  }
+
   const body: WatchedListResponse = {
-    data: outOfRange ? [] : ((listRes.data ?? []) as WatchedMovie[]),
+    data: moviesWithReviews,
     count,
     page: q.page,
     totalPages: Math.max(1, Math.ceil(count / q.limit))
