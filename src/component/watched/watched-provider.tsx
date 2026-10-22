@@ -61,7 +61,8 @@ export default function WatchedProvider({ children }: { children: ReactNode }) {
         sub: input.name,
         onUndo: async () => {
           try {
-            await saveWatched({ ...input, score: snapshot.initialScore, note: snapshot.initialNote || null })
+            await saveWatched({ ...input, score: snapshot.initialScore })
+            // Note: không restore note vì giờ note ở movie_reviews, không có API undo note
             await refreshWatched()
             showToast({ variant: 'undone', title: 'Đã hoàn tác', sub: 'Phim quay lại Đã xem' })
           } catch {

@@ -116,8 +116,9 @@ export function useFinishFromContinue({ removeFromContinue, refreshContinue }: O
           undone = true
           closeRating()
           try {
-            if (previous) await saveWatched({ ...input, score: previous.score, note: previous.note })
+            if (previous) await saveWatched({ ...input, score: previous.score })
             else await removeWatched(item.slug)
+            // Note: không restore note vì giờ note ở movie_reviews
             await restoreContinue(item)
             refreshContinue()
             refreshWatched()

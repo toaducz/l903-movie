@@ -59,7 +59,25 @@ export default function RatingDialog({ target, onClose, onSaved, onDelete }: Pro
     if (!rating || saving) return
     setStatus('saving')
     try {
-      const movie = await saveWatched({ ...target.input, score: rating, note: note.trim() || null })
+      // 1. Save score to watched_movies
+      const movie = await saveWatched({ ...target.input, score: rating })
+      
+      // 2. Save note to movie_reviews (if has note)
+      if (note.trim()) {
+        await fetch('/api/review', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            slug: target.input.slug,
+            name: target.input.name,
+            image: target.input.image || '',
+            score: rating,
+            review_text: note.trim(),
+            parent_id: null
+          })
+        })
+      }
+      
       onSaved(movie)
     } catch {
       setStatus('error')
