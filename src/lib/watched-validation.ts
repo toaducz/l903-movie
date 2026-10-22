@@ -62,9 +62,7 @@ export function parseWatchedUpsert(body: unknown): ValidationResult<WatchedUpser
     score = b.score
   }
 
-  if (typeof b.note === 'string' && b.note.trim().length > WATCHED_NOTE_MAX) {
-    return fail(`Bình luận tối đa ${WATCHED_NOTE_MAX} ký tự`)
-  }
+  // [REMOVED] note validation - note field no longer exists
 
   let year: number | null | undefined
   if (b.year === null) year = null
@@ -83,8 +81,8 @@ export function parseWatchedUpsert(body: unknown): ValidationResult<WatchedUpser
     year,
     categories: parseTaxonomies(b.categories),
     countries: parseTaxonomies(b.countries),
-    score,
-    note: parseOptionalText(b.note, WATCHED_NOTE_MAX)
+    score
+    // [REMOVED] note field
   }
   // Chỉ giữ các trường client thật sự gửi lên → không ghi đè dữ liệu cũ bằng undefined
   const provided = Object.fromEntries(Object.entries(optional).filter(([, v]) => v !== undefined))

@@ -21,7 +21,7 @@ export interface WatchedMovie {
   updated_at: string
 }
 
-// Body của POST /api/watched — đánh dấu đã xem hoặc sửa điểm/ghi chú.
+// Body của POST /api/watched — đánh dấu đã xem hoặc sửa điểm.
 // Trường nào không gửi lên thì giữ nguyên giá trị cũ (gửi `score: null` để xoá điểm).
 export interface WatchedUpsertInput {
   slug: string
@@ -33,7 +33,7 @@ export interface WatchedUpsertInput {
   categories?: WatchedTaxonomy[]
   countries?: WatchedTaxonomy[]
   score?: number | null
-  note?: string | null
+  // [REMOVED] note field - use movie_reviews instead
 }
 
 export type WatchedSort = 'score' | 'recent' | 'name'

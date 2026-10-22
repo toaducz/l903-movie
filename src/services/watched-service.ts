@@ -86,7 +86,7 @@ export const removeWatched = async (slug: string): Promise<void> => {
 export function toWatchedInput(
   detail: MovieDetail,
   source: MovieSource | string,
-  extra: Pick<WatchedUpsertInput, 'score' | 'note'> = {}
+  extra: Pick<WatchedUpsertInput, 'score'> = {}
 ): WatchedUpsertInput {
   const { movie } = detail
   return {
