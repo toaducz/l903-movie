@@ -1,5 +1,5 @@
 import { NextResponse, NextRequest } from 'next/server'
-import { supabase } from '../../../../lib/supabaseClient'
+import { supabase } from '@/lib/supabase-client'
 import { getUserId } from '../../../../lib/auth-helper'
 
 export async function POST(req: NextRequest) {

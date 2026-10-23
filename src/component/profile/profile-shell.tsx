@@ -5,7 +5,7 @@ import { useParams, usePathname } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
 import { useEffect, useRef, type ReactNode } from 'react'
 import type { User } from '@supabase/supabase-js'
-import { useAuth } from '@/app/auth-provider'
+import { useAuth } from '@/providers/auth-provider'
 import { getWatchedSummary } from '@/services/watched-service'
 import type { PublicUserProfile } from '@/types/profile'
 

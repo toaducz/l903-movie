@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server'
-import { supabase } from './supabaseClient'
+import { supabase } from './supabase-client'
 
 // Lấy user_id từ cookie token
 export async function getUserId(req: NextRequest) {

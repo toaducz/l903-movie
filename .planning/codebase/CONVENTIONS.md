@@ -6,8 +6,10 @@
 
 **Files:**
 - Components/pages: kebab-case hoặc camelCase — e.g. `custom-player.tsx`, `search-result-page.tsx`, `movie-item.tsx`
+- Hooks: `use-*.ts` đặt trong `src/hooks/` — e.g. `use-is-mobile.ts`, `use-mark-watched.ts`, `use-finish-from-continue.ts`
+- Providers: `*-provider.tsx` đặt trong `src/providers/` — e.g. `auth-provider.tsx`, `query-provider.tsx`, `watched-provider.tsx`
 - API modules: kebab-case — e.g. `get-detail-movie.tsx`, `get-list-movie-by-category.tsx`
-- Utils/lib: camelCase — e.g. `request.ts`, `auth-helper.ts`, `local-storage.ts`, `supabaseClient.ts`
+- Utils/lib: kebab-case hoặc camelCase — e.g. `request.ts`, `auth-helper.ts`, `local-storage.ts`, `supabase-client.ts`
 - Route Handlers: luôn `route.ts` trong thư mục tương ứng path
 
 **Functions:**

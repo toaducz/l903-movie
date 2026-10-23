@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabaseClient'
+import { supabase } from '@/lib/supabase-client'
 import { getUserId } from '@/lib/auth-helper'
 
 /** GET /api/user/privacy - Lấy cài đặt riêng tư của chính mình */

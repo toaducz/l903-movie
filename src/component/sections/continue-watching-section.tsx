@@ -8,7 +8,7 @@ import { getWatchingInProgress, removeFromViewHistory, WatchingItem } from '@/ut
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import SourceBadge from '@/component/item/source-badge'
 import WatchedIcon from '@/component/watched/watched-icon'
-import { continueKey, useFinishFromContinue } from '@/component/watched/use-finish-from-continue'
+import { continueKey, useFinishFromContinue } from '@/hooks/use-finish-from-continue'
 
 type DbItem = {
   slug: string

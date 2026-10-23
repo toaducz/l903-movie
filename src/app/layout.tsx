@@ -3,13 +3,13 @@ import { Be_Vietnam_Pro, JetBrains_Mono } from 'next/font/google'
 import './globals.css'
 import './watched.css'
 import Navbar from '@/component/layout/navbar'
-import QueryProvider from '@/app/provider'
+import QueryProvider from '@/providers/query-provider'
 import { Suspense } from 'react'
-import NProgressInit from '@/component/layout/NProgressInit'
-import { AuthProvider } from './auth-provider'
+import NProgressInit from '@/component/layout/nprogress-init'
+import { AuthProvider } from '@/providers/auth-provider'
 import Footer from '@/component/layout/footer'
 import ChatWidget from '@/component/chat-widget/chat-widget'
-import WatchedProvider from '@/component/watched/watched-provider'
+import WatchedProvider from '@/providers/watched-provider'
 
 const beVietnamPro = Be_Vietnam_Pro({
   variable: '--font-be-vietnam-pro',

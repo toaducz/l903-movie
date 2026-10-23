@@ -4,9 +4,9 @@ import Image from 'next/image'
 import Link from 'next/link'
 import SourceBadge from '@/component/item/source-badge'
 import { getMovieDetailHref } from '@/utils/movie-link'
-import WatchedIcon from '../watched-icon'
-import { formatWatchedDate } from '../watched-format'
-import type { RatingTarget } from '../rating-dialog'
+import WatchedIcon from '@/component/watched/watched-icon'
+import { formatWatchedDate } from '@/utils/watched-format'
+import type { RatingTarget } from '@/component/watched/rating-dialog'
 import type { WatchedMovie } from '@/types/watched'
 
 /** Dựng target cho popup chấm điểm từ 1 dòng "Đã xem" (giữ nguyên thể loại / quốc gia khi lưu lại) */
@@ -29,7 +29,7 @@ export function toRatingTarget(movie: WatchedMovie): RatingTarget {
   }
 }
 
-type Props = {
+interface WatchedCardProps {
   movie: WatchedMovie
   onRate: (movie: WatchedMovie) => void
   onDelete: (movie: WatchedMovie) => void
@@ -37,7 +37,7 @@ type Props = {
   isOwner?: boolean
 }
 
-export default function WatchedCard({ movie, onRate, onDelete, onMore, isOwner = false }: Props) {
+export default function WatchedCard({ movie, onRate, onDelete, onMore, isOwner = false }: WatchedCardProps) {
   const href = getMovieDetailHref(movie.slug, movie.source)
   const rated = movie.score !== null
 
@@ -63,7 +63,7 @@ export default function WatchedCard({ movie, onRate, onDelete, onMore, isOwner =
           <span className='dx-sc s0'>Chưa chấm</span>
         )}
         {isOwner && !rated && (
-          <button type='button' className='dx-qk cursor-pointer' onClick={() => onRate(movie)}>
+          <button type='button' className='dx-qk cursor-pointer transition-colors duration-200' onClick={() => onRate(movie)}>
             <WatchedIcon name='star' size={13} strokeWidth={2.6} />
             Chấm nhanh
           </button>
@@ -73,18 +73,18 @@ export default function WatchedCard({ movie, onRate, onDelete, onMore, isOwner =
         {isOwner && (
           <>
             <div className='dx-wc-ov'>
-              <button type='button' className='dx-b dx-b-sm dx-b-yel cursor-pointer' onClick={() => onRate(movie)}>
+              <button type='button' className='dx-b dx-b-sm dx-b-yel cursor-pointer transition-colors duration-200' onClick={() => onRate(movie)}>
                 <WatchedIcon name='pen' size={15} />
                 {rated ? 'Sửa điểm' : 'Chấm điểm'}
               </button>
-              <button type='button' className='dx-b dx-b-sm dx-b-gh cursor-pointer' onClick={() => onDelete(movie)}>
+              <button type='button' className='dx-b dx-b-sm dx-b-gh cursor-pointer transition-colors duration-200' onClick={() => onDelete(movie)}>
                 <WatchedIcon name='trash' size={15} />
                 Xoá
               </button>
             </div>
             <button
               type='button'
-              className='dx-more cursor-pointer'
+              className='dx-more cursor-pointer transition-colors duration-200'
               aria-label={`Thao tác: ${movie.name}`}
               onClick={() => onMore(movie)}
             >
@@ -94,7 +94,7 @@ export default function WatchedCard({ movie, onRate, onDelete, onMore, isOwner =
         )}
       </div>
 
-      <Link href={href} className='dx-wc-t hover:text-[var(--c-yel)] cursor-pointer' title={movie.name}>
+      <Link href={href} className='dx-wc-t hover:text-[var(--c-yel)] cursor-pointer transition-colors duration-200' title={movie.name}>
         {movie.name}
       </Link>
       {movie.note ? (

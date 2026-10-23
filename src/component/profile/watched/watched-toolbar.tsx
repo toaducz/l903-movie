@@ -1,8 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import BottomSheet from '../bottom-sheet'
-import WatchedIcon from '../watched-icon'
+import BottomSheet from '@/component/watched/bottom-sheet'
+import WatchedIcon from '@/component/watched/watched-icon'
 import FacetDropdown from './facet-dropdown'
 import {
   SORT_OPTIONS,
@@ -10,12 +10,12 @@ import {
   taxonomyFilterCount,
   type StarFilter,
   type WatchedFilters
-} from './watched-filters'
+} from '@/utils/watched-filters'
 import type { WatchedFacet, WatchedSort } from '@/types/watched'
 
 type FilterPatch = Partial<Omit<WatchedFilters, 'page'>>
 
-type Props = {
+interface WatchedToolbarProps {
   filters: WatchedFilters
   categories: WatchedFacet[]
   countries: WatchedFacet[]
@@ -24,7 +24,7 @@ type Props = {
   onChange: (patch: FilterPatch) => void
 }
 
-export default function WatchedToolbar(props: Props) {
+export default function WatchedToolbar(props: WatchedToolbarProps) {
   return (
     <>
       <DesktopToolbar {...props} />
@@ -46,7 +46,7 @@ function StarChips({
     <button
       key={o.value}
       type='button'
-      className={`dx-chip ${value === o.value ? 'on' : ''}`}
+      className={`dx-chip cursor-pointer transition-colors duration-200 ${value === o.value ? 'on' : ''}`}
       aria-pressed={value === o.value}
       onClick={() => onPick(o.value)}
     >
@@ -55,7 +55,7 @@ function StarChips({
   ))
 }
 
-function DesktopToolbar({ filters, categories, countries, unratedCount, busy, onChange }: Props) {
+function DesktopToolbar({ filters, categories, countries, unratedCount, busy, onChange }: WatchedToolbarProps) {
   return (
     <div className={`dx-tb ${busy ? 'dx-busy' : ''}`}>
       <div className='dx-seg' role='group' aria-label='Sắp xếp'>
@@ -63,7 +63,7 @@ function DesktopToolbar({ filters, categories, countries, unratedCount, busy, on
           <button
             key={o.value}
             type='button'
-            className={filters.sort === o.value ? 'on' : ''}
+            className={`cursor-pointer transition-colors duration-200 ${filters.sort === o.value ? 'on' : ''}`}
             aria-pressed={filters.sort === o.value}
             onClick={() => onChange({ sort: o.value })}
           >
@@ -92,7 +92,7 @@ function DesktopToolbar({ filters, categories, countries, unratedCount, busy, on
   )
 }
 
-function MobileToolbar({ filters, categories, countries, unratedCount, busy, onChange }: Props) {
+function MobileToolbar({ filters, categories, countries, unratedCount, busy, onChange }: WatchedToolbarProps) {
   const [sheetOpen, setSheetOpen] = useState(false)
   const activeCount = taxonomyFilterCount(filters)
   const categoryName = categories.find(c => c.slug === filters.category)?.name
@@ -101,12 +101,12 @@ function MobileToolbar({ filters, categories, countries, unratedCount, busy, onC
   return (
     <div className={`dx-tb-m mt-[18px] mb-[22px] ${busy ? 'dx-busy' : ''}`}>
       <div className='flex gap-2.5 mb-3'>
-        <label className='dx-dd flex-1 justify-between'>
+        <label className='dx-dd flex-1 justify-between cursor-pointer'>
           <span className='sr-only'>Sắp xếp</span>
           <select
             value={filters.sort}
             onChange={e => onChange({ sort: e.target.value as WatchedSort })}
-            className='font-bold'
+            className='font-bold cursor-pointer'
           >
             {SORT_OPTIONS.map(o => (
               <option key={o.value} value={o.value}>
@@ -118,7 +118,7 @@ function MobileToolbar({ filters, categories, countries, unratedCount, busy, onC
         </label>
         <button
           type='button'
-          className={`dx-dd ${activeCount ? 'act' : ''}`}
+          className={`dx-dd cursor-pointer ${activeCount ? 'act' : ''}`}
           aria-haspopup='dialog'
           onClick={() => setSheetOpen(true)}
         >
@@ -134,14 +134,14 @@ function MobileToolbar({ filters, categories, countries, unratedCount, busy, onC
       {(categoryName || countryName) && (
         <div className='flex gap-1.5 flex-wrap mt-3'>
           {categoryName && (
-            <button type='button' className='dx-chip cy' onClick={() => onChange({ category: null })}>
+            <button type='button' className='dx-chip cy cursor-pointer' onClick={() => onChange({ category: null })}>
               Thể loại: {categoryName}
               <WatchedIcon name='x' size={12} />
               <span className='sr-only'>Bỏ lọc</span>
             </button>
           )}
           {countryName && (
-            <button type='button' className='dx-chip cy' onClick={() => onChange({ country: null })}>
+            <button type='button' className='dx-chip cy cursor-pointer' onClick={() => onChange({ country: null })}>
               Quốc gia: {countryName}
               <WatchedIcon name='x' size={12} />
               <span className='sr-only'>Bỏ lọc</span>
@@ -166,7 +166,7 @@ function MobileToolbar({ filters, categories, countries, unratedCount, busy, onC
           />
           <button
             type='button'
-            className='dx-b dx-b-pri w-full mt-4'
+            className='dx-b dx-b-pri w-full mt-4 cursor-pointer transition-colors duration-200'
             style={{ height: 52 }}
             onClick={() => setSheetOpen(false)}
           >
@@ -196,7 +196,7 @@ function FacetSection({
         <div className='flex gap-1.5 flex-wrap'>
           <button
             type='button'
-            className={`dx-chip ${!value ? 'on' : ''}`}
+            className={`dx-chip cursor-pointer transition-colors duration-200 ${!value ? 'on' : ''}`}
             aria-pressed={!value}
             onClick={() => onPick(null)}
           >
@@ -206,7 +206,7 @@ function FacetSection({
             <button
               key={f.slug}
               type='button'
-              className={`dx-chip ${value === f.slug ? 'on' : ''}`}
+              className={`dx-chip cursor-pointer transition-colors duration-200 ${value === f.slug ? 'on' : ''}`}
               aria-pressed={value === f.slug}
               onClick={() => onPick(value === f.slug ? null : f.slug)}
             >

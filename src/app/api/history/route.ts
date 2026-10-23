@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getUserSupabase } from '@/lib/supabase-user-client'
-import { supabase } from '@/lib/supabaseClient'
+import { supabase } from '@/lib/supabase-client'
 
 /** POST /api/history - upsert lịch sử xem */
 export async function POST(req: NextRequest) {

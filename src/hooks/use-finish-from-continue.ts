@@ -2,7 +2,7 @@
 
 import { useCallback, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import { useWatched } from './watched-provider'
+import { useWatched } from '@/providers/watched-provider'
 import {
   getWatchedStatus,
   removeWatched,
@@ -22,7 +22,7 @@ const LEAVE_MS = 250 // thẻ thu khỏi hàng
 const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
 export const continueKey = (item: WatchingItem) => `${item.slug}_${item.source ?? ''}`
 
-type Options = {
+interface Options {
   /** Bỏ phim khỏi "Đang xem dở" (UI + localStorage + server) */
   removeFromContinue: (item: WatchingItem) => Promise<void>
   /** Tải lại hàng "Đang xem dở" sau khi hoàn tác */
@@ -118,7 +118,6 @@ export function useFinishFromContinue({ removeFromContinue, refreshContinue }: O
           try {
             if (previous) await saveWatched({ ...input, score: previous.score })
             else await removeWatched(item.slug)
-            // Note: không restore note vì giờ note ở movie_reviews
             await restoreContinue(item)
             refreshContinue()
             refreshWatched()

@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useRouter } from 'next/navigation'
-import { useAuth } from '@/app/auth-provider'
+import { useAuth } from '@/providers/auth-provider'
 import { getMovieDetailHref } from '@/utils/movie-link'
 import type { UserNotification, InteractionItem } from '@/types/notification'
 
@@ -178,7 +178,7 @@ export default function NotificationBell() {
       {/* Dropdown 2 Tab */}
       {open && (
         <div
-          className='absolute right-0 top-full mt-3 w-88 max-w-[calc(100vw-2rem)] rounded-2xl shadow-2xl z-[9999] border overflow-hidden'
+          className='absolute top-full mt-3 left-0 w-full sm:w-88 sm:right-0 max-w-[calc(100vw-2rem)] rounded-2xl shadow-2xl z-[9999] border overflow-hidden'
           style={{
             background: 'var(--c-card)',
             borderColor: 'var(--c-line)',

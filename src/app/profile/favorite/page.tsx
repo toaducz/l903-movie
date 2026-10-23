@@ -6,8 +6,8 @@ import HistoryItem from '@/component/item/profile-movie-items'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import Loading from '@/component/status/loading'
 import { FAVORITE_COUNT_QUERY_KEY } from '@/component/profile/profile-shell'
-import { useAuth } from '@/app/auth-provider'
-import WatchedPagination from '@/component/watched/profile/watched-pagination'
+import { useAuth } from '@/providers/auth-provider'
+import WatchedPagination from '@/component/profile/watched/watched-pagination'
 
 interface FavoriteMovie {
   name: string

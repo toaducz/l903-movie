@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import { useWatched } from './watched-provider'
+import { useWatched } from '@/providers/watched-provider'
 import { saveWatched, toWatchedInput, watchedErrorMessage, WATCHED_QUERY_KEY } from '@/services/watched-service'
 import type { MovieDetail, MovieSource } from '@/types/movie'
 

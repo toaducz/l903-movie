@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
 import HistoryItem from '@/component/item/profile-movie-items'
-import { useAuth } from '../auth-provider'
+import { useAuth } from '@/providers/auth-provider'
 import { useQuery } from '@tanstack/react-query'
 import Loading from '@/component/status/loading'
 import { useState, useEffect } from 'react'

@@ -18,12 +18,13 @@ import WatchedButton from '@/component/watched/watched-button'
 import WatchedIcon from '@/component/watched/watched-icon'
 import { saveViewHistory } from '@/utils/local-storage'
 import VideoPlayer from '@/component/player/custom-player'
-import { useAuth } from '@/app/auth-provider'
+import { useAuth } from '@/providers/auth-provider'
 import MovieReview from '@/component/interactive/movie-review'
 import type { SubtitleParams, SubtitleCue } from '@/types/subtitle'
 import { DownloadModal } from '@/component/interactive/download-modal'
-import FinishBanner, { useFinishBanner } from '@/component/watched/finish-banner'
-import { FINISH_THRESHOLD, isFinalEpisode } from '@/lib/watched-finish'
+import FinishBanner from '@/component/watched/finish-banner'
+import { useFinishBanner } from '@/hooks/use-finish-banner'
+import { FINISH_THRESHOLD, isFinalEpisode } from '@/utils/watched-finish'
 
 const AUTOPLAY_COUNTDOWN = 5
 // OPhim đã chuyển thành VSMOV nên không còn nút OPhim riêng

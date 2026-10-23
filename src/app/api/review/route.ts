@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabase } from '../../../lib/supabaseClient'
+import { supabase } from '@/lib/supabase-client'
 import { getUserId } from '../../../lib/auth-helper'
 
 type ReviewRecord = {
@@ -150,11 +150,7 @@ export async function PUT(req: NextRequest) {
   }
   if (score !== undefined) payload.score = score
 
-  const { error } = await supabase
-    .from('movie_reviews')
-    .update(payload)
-    .eq('id', id)
-    .eq('user_id', user_id)
+  const { error } = await supabase.from('movie_reviews').update(payload).eq('id', id).eq('user_id', user_id)
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
@@ -170,11 +166,7 @@ export async function DELETE(req: NextRequest) {
   const id = searchParams.get('id')
   if (!id) return NextResponse.json({ error: 'Thiếu id' }, { status: 400 })
 
-  const { error } = await supabase
-    .from('movie_reviews')
-    .delete()
-    .eq('id', id)
-    .eq('user_id', user_id)
+  const { error } = await supabase.from('movie_reviews').delete().eq('id', id).eq('user_id', user_id)
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return NextResponse.json({ success: true })
@@ -233,16 +225,8 @@ export async function GET(req: NextRequest) {
   // Logic lấy toàn bộ comment của một phim và cấu trúc lại
   if (slug) {
     const [{ data: flatData, error }, { data: watchedData }] = await Promise.all([
-      supabase
-        .from('movie_reviews')
-        .select('*')
-        .eq('slug', slug)
-        .order('updated_at', { ascending: true }),
-      supabase
-        .from('watched_movies')
-        .select('user_id, score')
-        .eq('slug', slug)
-        .not('score', 'is', null)
+      supabase.from('movie_reviews').select('*').eq('slug', slug).order('updated_at', { ascending: true }),
+      supabase.from('watched_movies').select('user_id, score').eq('slug', slug).not('score', 'is', null)
     ])
 
     if (error) {
@@ -273,10 +257,7 @@ export async function GET(req: NextRequest) {
 /**
  * Hàm hỗ trợ chuyển đổi mảng phẳng thành cấu trúc cây 1 tầng (tránh Infinite Nesting)
  */
-function buildCommentTree(
-  flatComments: ReviewRecord[],
-  watchedScoreMap: Record<string, number> = {}
-): ReviewNode[] {
+function buildCommentTree(flatComments: ReviewRecord[], watchedScoreMap: Record<string, number> = {}): ReviewNode[] {
   const map: Record<string, ReviewNode> = {}
   const roots: ReviewNode[] = []
 

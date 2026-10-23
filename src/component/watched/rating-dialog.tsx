@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react'
 import Image from 'next/image'
 import WatchedIcon from './watched-icon'
-import { useIsMobile } from './use-is-mobile'
+import { useIsMobile } from '@/hooks/use-is-mobile'
 import { saveWatched } from '@/services/watched-service'
 import { WATCHED_NOTE_MAX } from '@/lib/watched-validation'
 import type { WatchedMovie, WatchedUpsertInput } from '@/types/watched'

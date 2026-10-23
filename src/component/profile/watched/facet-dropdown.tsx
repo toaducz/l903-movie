@@ -1,10 +1,10 @@
 'use client'
 
 import { useEffect, useId, useRef, useState, type KeyboardEvent } from 'react'
-import WatchedIcon from '../watched-icon'
+import WatchedIcon from '@/component/watched/watched-icon'
 import type { WatchedFacet } from '@/types/watched'
 
-type Props = {
+interface FacetDropdownProps {
   label: string
   facets: WatchedFacet[]
   value: string | null
@@ -12,7 +12,7 @@ type Props = {
 }
 
 /** Dropdown "Thể loại: Tất cả ▾" (desktop) — chỉ liệt kê thể loại / quốc gia có trong danh sách Đã xem */
-export default function FacetDropdown({ label, facets, value, onChange }: Props) {
+export default function FacetDropdown({ label, facets, value, onChange }: FacetDropdownProps) {
   const [open, setOpen] = useState(false)
   const rootRef = useRef<HTMLDivElement>(null)
   const listId = useId()
@@ -53,7 +53,7 @@ export default function FacetDropdown({ label, facets, value, onChange }: Props)
     <div ref={rootRef} className='relative' onKeyDown={handleKeyDown}>
       <button
         type='button'
-        className={`dx-dd ${selected ? 'act' : ''}`}
+        className={`dx-dd cursor-pointer ${selected ? 'act' : ''}`}
         aria-haspopup='listbox'
         aria-expanded={open}
         aria-controls={open ? listId : undefined}
@@ -96,7 +96,7 @@ function FacetOption({
       type='button'
       role='option'
       aria-selected={selected}
-      className={`dx-opt ${selected ? 'on' : ''}`}
+      className={`dx-opt cursor-pointer ${selected ? 'on' : ''}`}
       onClick={onPick}
     >
       <span>{name}</span>

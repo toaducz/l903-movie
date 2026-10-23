@@ -1,6 +1,6 @@
 import { Suspense } from 'react'
-import WatchedView from '@/component/watched/profile/watched-view'
-import { WatchedGridSkeleton } from '@/component/watched/profile/watched-states'
+import WatchedView from '@/component/profile/watched/watched-view'
+import { WatchedGridSkeleton } from '@/component/profile/watched/watched-states'
 
 interface PageProps {
   params: Promise<{ id: string }>

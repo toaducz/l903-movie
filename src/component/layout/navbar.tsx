@@ -9,7 +9,7 @@ import { useQuery } from '@tanstack/react-query'
 import { getCategories, getCountries, getSearchSuggestions } from '@/services/movie-service'
 import { DEFAULT_MOVIE_SOURCE } from '@/utils/env'
 import userIcon from '@/assets/user-icons.png'
-import { useAuth } from '@/app/auth-provider'
+import { useAuth } from '@/providers/auth-provider'
 import NotificationBell from '@/component/layout/notification-bell'
 import { getMovieDetailHref } from '@/utils/movie-link'
 

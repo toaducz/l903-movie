@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import type { CommunityUser } from '@/types/profile'
-import WatchedPagination from '@/component/watched/profile/watched-pagination'
+import WatchedPagination from '@/component/profile/watched/watched-pagination'
 import UserItem from '@/component/item/user-item'
 
 interface UsersApiResponse {

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabase } from '../../../lib/supabaseClient'
+import { supabase } from '@/lib/supabase-client'
 import { getUserId } from '../../../lib/auth-helper'
 
 async function setSession(req: NextRequest) {

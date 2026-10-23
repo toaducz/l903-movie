@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabaseClient'
+import { supabase } from '@/lib/supabase-client'
 import type { PublicUserProfile } from '@/types/profile'
 
 interface RouteParams {
@@ -20,17 +20,8 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
       .select('is_history_public, is_watched_public, created_at')
       .eq('user_id', id)
       .maybeSingle(),
-    supabase
-      .from('community_users')
-      .select('display_name, handle, avatar_url, created_at')
-      .eq('id', id)
-      .maybeSingle(),
-    supabase
-      .from('movie_reviews')
-      .select('user_email, updated_at')
-      .eq('user_id', id)
-      .limit(1)
-      .maybeSingle()
+    supabase.from('community_users').select('display_name, handle, avatar_url, created_at').eq('id', id).maybeSingle(),
+    supabase.from('movie_reviews').select('user_email, updated_at').eq('user_id', id).limit(1).maybeSingle()
   ])
 
   const privacyData = privacyRes.status === 'fulfilled' ? privacyRes.value.data : null

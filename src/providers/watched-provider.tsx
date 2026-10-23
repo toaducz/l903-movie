@@ -2,14 +2,14 @@
 
 import { createContext, useCallback, useContext, useMemo, useRef, useState, type ReactNode } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import RatingDialog, { SCORE_LABELS, type RatingTarget } from './rating-dialog'
-import WatchedToast, { type WatchedToastData } from './watched-toast'
+import RatingDialog, { SCORE_LABELS, type RatingTarget } from '@/component/watched/rating-dialog'
+import WatchedToast, { type WatchedToastData } from '@/component/watched/watched-toast'
 import { removeWatched, saveWatched, watchedErrorMessage, WATCHED_QUERY_KEY } from '@/services/watched-service'
 import type { WatchedMovie } from '@/types/watched'
 
 type ToastInput = Omit<WatchedToastData, 'id'>
 
-type WatchedContextValue = {
+export interface WatchedContextValue {
   openRating: (target: RatingTarget) => void
   closeRating: () => void
   showToast: (toast: ToastInput) => void
@@ -62,7 +62,6 @@ export default function WatchedProvider({ children }: { children: ReactNode }) {
         onUndo: async () => {
           try {
             await saveWatched({ ...input, score: snapshot.initialScore })
-            // Note: không restore note vì giờ note ở movie_reviews, không có API undo note
             await refreshWatched()
             showToast({ variant: 'undone', title: 'Đã hoàn tác', sub: 'Phim quay lại Đã xem' })
           } catch {

@@ -2,7 +2,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import emptyGif from '@/assets/gif/dantsu-flame-eating.gif'
 import notFoundImg from '@/assets/image/pekora-not-found.jpg'
-import WatchedIcon from '../watched-icon'
+import WatchedIcon from '@/component/watched/watched-icon'
 
 export function WatchedGridSkeleton({ count = 12 }: { count?: number }) {
   return (
@@ -40,7 +40,7 @@ export function WatchedEmpty({ isOwner = true }: { isOwner?: boolean }) {
         )}
       </p>
       {isOwner && (
-        <Link href='/' className='dx-b dx-b-pri cursor-pointer'>
+        <Link href='/' className='dx-b dx-b-pri cursor-pointer transition-colors duration-200'>
           <WatchedIcon name='search' size={16} strokeWidth={2.6} />
           Khám phá phim
         </Link>
@@ -53,11 +53,11 @@ export function WatchedNoResult({ description, onClear }: { description: string;
   return (
     <div className='dx-empty' style={{ paddingTop: 24 }}>
       <div className='dx-img sm'>
-        <Image src={notFoundImg} alt='' fill className='object-cover' sizes='200px' />
+        <Image src={notFoundImg} alt='Không tìm thấy kết quả' fill className='object-cover' sizes='200px' />
       </div>
       <h3>Không có phim nào khớp</h3>
       <p>{description}</p>
-      <button type='button' className='dx-b dx-b-gh' onClick={onClear}>
+      <button type='button' className='dx-b dx-b-gh cursor-pointer transition-colors duration-200' onClick={onClear}>
         Xoá bộ lọc
       </button>
     </div>
@@ -71,7 +71,7 @@ export function WatchedError({ message, onRetry }: { message: string; onRetry: (
       <div className='flex-1'>
         <b>Chưa tải được danh sách.</b> {message}
       </div>
-      <button type='button' className='dx-b dx-b-sm dx-b-gh' onClick={onRetry}>
+      <button type='button' className='dx-b dx-b-sm dx-b-gh cursor-pointer transition-colors duration-200' onClick={onRetry}>
         Thử lại
       </button>
     </div>

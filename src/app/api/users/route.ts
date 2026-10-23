@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabaseClient'
+import { supabase } from '@/lib/supabase-client'
 import type { CommunityUser } from '@/types/profile'
 
 /** GET /api/users?q=&page=1&limit=12 - Danh bạ toàn bộ thành viên hệ thống (auth.users) */
@@ -103,9 +103,7 @@ export async function GET(req: NextRequest) {
   }
 
   // B. Bảng user_privacy_settings
-  const { data: privacyUsers } = await supabase
-    .from('user_privacy_settings')
-    .select('user_id, created_at')
+  const { data: privacyUsers } = await supabase.from('user_privacy_settings').select('user_id, created_at')
 
   for (const p of privacyUsers ?? []) {
     if (!p.user_id || usersMap.has(p.user_id)) continue
@@ -120,10 +118,7 @@ export async function GET(req: NextRequest) {
   }
 
   // C. Bảng movie_favorites
-  const { data: favUsers } = await supabase
-    .from('movie_favorites')
-    .select('user_id, created_at')
-    .limit(100)
+  const { data: favUsers } = await supabase.from('movie_favorites').select('user_id, created_at').limit(100)
 
   for (const f of favUsers ?? []) {
     if (!f.user_id || usersMap.has(f.user_id)) continue
@@ -138,10 +133,7 @@ export async function GET(req: NextRequest) {
   }
 
   // D. Bảng watched_movies (tính số lượng phim đã chấm điểm)
-  const { data: watchedUsers } = await supabase
-    .from('watched_movies')
-    .select('user_id, watched_at, score')
-    .limit(200)
+  const { data: watchedUsers } = await supabase.from('watched_movies').select('user_id, watched_at, score').limit(200)
 
   for (const w of watchedUsers ?? []) {
     if (!w.user_id) continue
@@ -162,9 +154,7 @@ export async function GET(req: NextRequest) {
 
   let allUsers = Array.from(usersMap.values())
   if (q) {
-    allUsers = allUsers.filter(
-      u => u.name.toLowerCase().includes(q) || u.handle.toLowerCase().includes(q)
-    )
+    allUsers = allUsers.filter(u => u.name.toLowerCase().includes(q) || u.handle.toLowerCase().includes(q))
   }
 
   const total = allUsers.length

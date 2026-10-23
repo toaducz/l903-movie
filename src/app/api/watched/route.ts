@@ -1,12 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getUserSupabase } from '@/lib/supabase-user-client'
-import { supabase } from '@/lib/supabaseClient'
+import { supabase } from '@/lib/supabase-client'
 import { isValidSlug, parseWatchedListQuery, parseWatchedUpsert } from '@/lib/watched-validation'
 import { summarizeWatched, type WatchedSummaryRow } from '@/lib/watched-summary'
 import type { WatchedListResponse, WatchedMovie } from '@/types/watched'
 
-const COLUMNS =
-  'id, slug, source, name, origin_name, image, year, categories, countries, score, watched_at, updated_at'
+const COLUMNS = 'id, slug, source, name, origin_name, image, year, categories, countries, score, watched_at, updated_at'
 
 const unauthorized = () => NextResponse.json({ error: 'Bạn cần đăng nhập' }, { status: 401 })
 const badRequest = (error: string) => NextResponse.json({ error }, { status: 400 })
@@ -61,9 +60,9 @@ export async function GET(req: NextRequest) {
       .eq('slug', slug)
       .maybeSingle()
     if (error) return serverError('get one', error)
-    
+
     let result = data as WatchedMovie | null
-    
+
     // [NEW] Fetch review if exists
     if (result) {
       const { data: review } = await queryDb
@@ -73,12 +72,12 @@ export async function GET(req: NextRequest) {
         .eq('slug', slug)
         .is('parent_id', null)
         .maybeSingle()
-      
+
       if (review) {
         result = { ...result, note: review.review_text }
       }
     }
-    
+
     return NextResponse.json({ data: result })
   }
 

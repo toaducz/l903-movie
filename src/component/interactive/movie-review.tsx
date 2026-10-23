@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { useAuth } from '@/app/auth-provider'
+import { useAuth } from '@/providers/auth-provider'
 import Loading from '@/component/status/loading'
 
 interface MovieReviewProps {
