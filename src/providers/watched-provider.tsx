@@ -61,7 +61,22 @@ export default function WatchedProvider({ children }: { children: ReactNode }) {
         sub: input.name,
         onUndo: async () => {
           try {
-            await saveWatched({ ...input, score: snapshot.initialScore })
+            const restored = await saveWatched({ ...input, score: snapshot.initialScore })
+            if (snapshot.initialNote?.trim()) {
+              await fetch('/api/review', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  slug: input.slug,
+                  name: input.name,
+                  image: input.image || '',
+                  score: snapshot.initialScore || 0,
+                  review_text: snapshot.initialNote.trim(),
+                  parent_id: null,
+                  watched_movie_id: restored.id
+                })
+              })
+            }
             await refreshWatched()
             showToast({ variant: 'undone', title: 'Đã hoàn tác', sub: 'Phim quay lại Đã xem' })
           } catch {

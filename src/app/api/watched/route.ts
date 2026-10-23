@@ -219,5 +219,17 @@ export async function DELETE(req: NextRequest) {
     console.error('[api/watched] Xóa community activity thất bại:', deleteActivityErr)
   }
 
+  // Xoá review được đồng bộ từ mục Đã xem (có watched_movie_id)
+  try {
+    await auth.client
+      .from('movie_reviews')
+      .delete()
+      .eq('user_id', auth.userId)
+      .eq('slug', body.slug)
+      .not('watched_movie_id', 'is', null)
+  } catch (deleteReviewErr) {
+    console.error('[api/watched] Xóa synced review thất bại:', deleteReviewErr)
+  }
+
   return NextResponse.json({ ok: true })
 }

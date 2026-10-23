@@ -58,7 +58,11 @@ export default function MovieReview({ slug, name, image }: MovieReviewProps) {
         setTotalCount(data.count || 0)
         // Check nếu user đã viết bài bình luận gốc
         if (user) {
-          const myReview = data.data.find((r: Review) => r.user_email === user.email && !r.parent_id)
+          const myReview = data.data.find(
+            (r: Review) =>
+              Boolean((user.id && r.user_id && r.user_id === user.id) || (user.email && r.user_email === user.email)) &&
+              !r.parent_id
+          )
           setHasReviewed(Boolean(myReview))
         }
       }
@@ -77,7 +81,11 @@ export default function MovieReview({ slug, name, image }: MovieReviewProps) {
   // Cập nhật lại state hasReviewed nếu user load sau
   useEffect(() => {
     if (user && reviews.length > 0) {
-      const myReview = reviews.find((r: Review) => r.user_email === user.email && !r.parent_id)
+      const myReview = reviews.find(
+        (r: Review) =>
+          Boolean((user.id && r.user_id && r.user_id === user.id) || (user.email && r.user_email === user.email)) &&
+          !r.parent_id
+      )
       setHasReviewed(Boolean(myReview))
     }
   }, [user, reviews])
@@ -211,8 +219,16 @@ export default function MovieReview({ slug, name, image }: MovieReviewProps) {
   }
 
   const renderReview = (review: Review, isReply = false) => {
-    const username = review.user_email.split('@')[0]
-    const isOwner = user?.email === review.user_email
+    const rawUsername = review.user_email && review.user_email.includes('@')
+      ? review.user_email.split('@')[0]
+      : review.user_email && review.user_email !== 'Người dùng ẩn danh'
+        ? review.user_email
+        : 'Thành viên'
+    const username = rawUsername === 'Người dùng ẩn danh' ? 'Thành viên' : rawUsername
+    const isOwner = Boolean(
+      (user?.id && review.user_id && user.id === review.user_id) ||
+      (user?.email && review.user_email && user.email === review.user_email)
+    )
 
     // [NEW] Nếu review riêng tư và không phải owner → hiển thị mosaic
     if (review.is_private && !isOwner) {

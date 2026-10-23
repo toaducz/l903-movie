@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, type KeyboardEvent } from 'react'
 import Image from 'next/image'
 import WatchedIcon from './watched-icon'
 import { useIsMobile } from '@/hooks/use-is-mobile'
+import { useAuth } from '@/providers/auth-provider'
 import { saveWatched } from '@/services/watched-service'
 import { WATCHED_NOTE_MAX } from '@/lib/watched-validation'
 import type { WatchedMovie, WatchedUpsertInput } from '@/types/watched'
@@ -32,6 +33,7 @@ type Status = 'idle' | 'saving' | 'error'
 const FOCUSABLE = 'button:not([disabled]), textarea:not([disabled]), [tabindex="0"]'
 
 export default function RatingDialog({ target, onClose, onSaved, onDelete }: Props) {
+  const { user } = useAuth()
   const isMobile = useIsMobile()
   const isEdit = target.mode === 'edit'
   const [rating, setRating] = useState(target.initialScore ?? 0)
@@ -62,8 +64,10 @@ export default function RatingDialog({ target, onClose, onSaved, onDelete }: Pro
       // 1. Save score to watched_movies
       const movie = await saveWatched({ ...target.input, score: rating })
       
-      // 2. Save note to movie_reviews (if has note)
-      if (note.trim()) {
+      const trimmedNote = note.trim()
+
+      // 2. Đồng bộ note với movie_reviews
+      if (trimmedNote) {
         await fetch('/api/review', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -72,13 +76,20 @@ export default function RatingDialog({ target, onClose, onSaved, onDelete }: Pro
             name: target.input.name,
             image: target.input.image || '',
             score: rating,
-            review_text: note.trim(),
-            parent_id: null
+            review_text: trimmedNote,
+            user_email: user?.email,
+            parent_id: null,
+            watched_movie_id: movie.id
           })
+        })
+      } else if (target.initialNote) {
+        // Nếu trước đó đã có ghi chú nhưng nay xóa trắng -> xóa review gốc tương ứng
+        await fetch(`/api/review?slug=${target.input.slug}`, {
+          method: 'DELETE'
         })
       }
       
-      onSaved(movie)
+      onSaved({ ...movie, note: trimmedNote || null })
     } catch {
       setStatus('error')
     }
