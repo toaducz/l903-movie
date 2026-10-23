@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import Image from 'next/image'
+import { getMovieDetailHref } from '@/utils/movie-link'
 
 type HistoryItemProps = {
   slug: string
@@ -13,9 +14,8 @@ type HistoryItemProps = {
 }
 
 export default function HistoryItem({ slug, name, image, episodeName, hideEpisode, source }: HistoryItemProps) {
-  const href = episodeName
-    ? `/detail-movie/${slug}?watch=1&ep=${encodeURIComponent(episodeName)}${source ? `&source=${source}` : ''}`
-    : `/detail-movie/${slug}${source ? `?source=${source}` : ''}`
+  const query = episodeName ? { watch: '1', ep: episodeName } : {}
+  const href = getMovieDetailHref(slug, source, query)
 
   return (
     <Link

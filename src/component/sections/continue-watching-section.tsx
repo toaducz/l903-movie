@@ -9,6 +9,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import SourceBadge from '@/component/item/source-badge'
 import WatchedIcon from '@/component/watched/watched-icon'
 import { continueKey, useFinishFromContinue } from '@/hooks/use-finish-from-continue'
+import { getMovieDetailHref } from '@/utils/movie-link'
 
 type DbItem = {
   slug: string
@@ -260,10 +261,12 @@ export default function ContinueWatchingSection() {
                 </div>
               )}
               <Link
-                href={`/detail-movie/${item.slug}?watch=1&ep=${encodeURIComponent(item.episodeName ?? '')}&t=${Math.floor(
-                  item.progress
-                )}${item.source ? `&source=${item.source}` : ''}`}
-                className='block'
+                href={getMovieDetailHref(item.slug, item.source, {
+                  watch: '1',
+                  ep: item.episodeName ?? '',
+                  t: String(Math.floor(item.progress))
+                })}
+                className='block cursor-pointer'
               >
                 {/* Art + progress */}
                 <div className='relative rounded-xl overflow-hidden border border-white/10 bg-[var(--c-card)]'>

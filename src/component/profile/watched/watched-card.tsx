@@ -4,17 +4,18 @@ import Image from 'next/image'
 import Link from 'next/link'
 import SourceBadge from '@/component/item/source-badge'
 import { getMovieDetailHref } from '@/utils/movie-link'
+import { resolveMovieSource } from '@/utils/env'
 import WatchedIcon from '@/component/watched/watched-icon'
 import { formatWatchedDate } from '@/utils/watched-format'
 import type { RatingTarget } from '@/component/watched/rating-dialog'
-import type { WatchedMovie } from '@/types/watched'
+import type { WatchedMovie, WatchedSource } from '@/types/watched'
 
 /** Dựng target cho popup chấm điểm từ 1 dòng "Đã xem" (giữ nguyên thể loại / quốc gia khi lưu lại) */
 export function toRatingTarget(movie: WatchedMovie): RatingTarget {
   return {
     input: {
       slug: movie.slug,
-      source: movie.source,
+      source: resolveMovieSource(movie.source) as WatchedSource,
       name: movie.name,
       origin_name: movie.origin_name,
       image: movie.image,
@@ -38,7 +39,8 @@ interface WatchedCardProps {
 }
 
 export default function WatchedCard({ movie, onRate, onDelete, onMore, isOwner = false }: WatchedCardProps) {
-  const href = getMovieDetailHref(movie.slug, movie.source)
+  const source = resolveMovieSource(movie.source)
+  const href = getMovieDetailHref(movie.slug, source)
   const rated = movie.score !== null
 
   return (
