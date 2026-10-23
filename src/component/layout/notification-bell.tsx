@@ -178,7 +178,7 @@ export default function NotificationBell() {
       {/* Dropdown 2 Tab */}
       {open && (
         <div
-          className='absolute top-full mt-3 left-0 w-full sm:w-88 sm:right-0 max-w-[calc(100vw-2rem)] rounded-2xl shadow-2xl z-[9999] border overflow-hidden'
+          className='fixed inset-x-3 top-[72px] w-auto max-w-none sm:absolute sm:inset-x-auto sm:top-full sm:right-0 sm:left-auto sm:mt-3 sm:w-[380px] sm:max-w-[calc(100vw-2rem)] rounded-2xl shadow-2xl z-[9999] border overflow-hidden'
           style={{
             background: 'var(--c-card)',
             borderColor: 'var(--c-line)',
@@ -244,7 +244,7 @@ export default function NotificationBell() {
           </div>
 
           {/* Danh sách thông báo theo Tab */}
-          <div className='max-h-84 overflow-y-auto divide-y divide-white/5'>
+          <div className='max-h-[60vh] sm:max-h-[420px] overflow-y-auto divide-y divide-white/5 overscroll-contain'>
             {activeTab === 'episodes' ? (
               // TAB 1: TẬP MỚI
               episodeNotifs.length === 0 ? (
@@ -337,7 +337,7 @@ export default function NotificationBell() {
                           <span className='text-xs font-bold text-white'>@{item.actor_name}</span>
                           {item.isDirectReplyToMe && (
                             <span
-                              className='text-[9px] font-bold px-1.5 py-0.2 rounded'
+                              className='text-[9px] font-bold px-1.5 py-0.5 rounded'
                               style={{ background: 'var(--c-pink)', color: 'black' }}
                             >
                               Trả lời bạn
@@ -364,7 +364,7 @@ export default function NotificationBell() {
 
                         {/* Đoạn trích comment/review nếu có */}
                         {item.content && (
-                          <p className='text-[11px] text-white/50 italic mt-1 line-clamp-2 bg-white/5 px-2 py-1 rounded'>
+                          <p className='text-[11px] text-white/50 italic mt-1 line-clamp-2 bg-white/5 px-2 py-1 rounded break-words'>
                             &ldquo;{item.content}&rdquo;
                           </p>
                         )}
