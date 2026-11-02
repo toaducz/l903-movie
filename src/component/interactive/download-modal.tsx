@@ -6,7 +6,8 @@ import { filterAdSegmentsFromM3U8 } from '@/utils/m3u8-cleaner'
 interface DownloadModalProps {
   isOpen: boolean
   onClose: () => void
-  m3u8Url: string
+  m3u8Url?: string
+  embedUrl?: string
   fileName: string
 }
 
@@ -14,7 +15,7 @@ type DownloadStatus = 'confirm' | 'fetching_playlist' | 'downloading' | 'saving'
 
 const KEYWORDS = ['toiyeuanime', 'toilagay']
 
-export const DownloadModal: React.FC<DownloadModalProps> = ({ isOpen, onClose, m3u8Url, fileName }) => {
+export const DownloadModal: React.FC<DownloadModalProps> = ({ isOpen, onClose, m3u8Url, embedUrl, fileName }) => {
   const [status, setStatus] = useState<DownloadStatus>('confirm')
   const [progress, setProgress] = useState(0)
   const [downloadedSegments, setDownloadedSegments] = useState(0)
@@ -123,7 +124,7 @@ export const DownloadModal: React.FC<DownloadModalProps> = ({ isOpen, onClose, m
     // Kiểm tra chéo từ khóa trực tiếp từ DOM Input Ref để chống hack/bypass bằng cách thay đổi React State
     const currentVal = inputRef.current?.value || ''
     if (btoa(currentVal) !== keywordHashRef.current) {
-      alert('Không thể bypass đâu bạn ơi! Hãy gõ đúng từ khóa nhé 😉')
+      alert('Không thể bypass đâu bạn ơi! Đừng cố :D')
       return
     }
 
@@ -137,8 +138,27 @@ export const DownloadModal: React.FC<DownloadModalProps> = ({ isOpen, onClose, m
     const signal = controller.signal
 
     try {
+      let targetM3u8 = m3u8Url || ''
+
+      // Nếu không có m3u8Url hoặc m3u8Url là link embed, thử cào từ player
+      if (!targetM3u8 || (!targetM3u8.includes('.m3u8') && !targetM3u8.includes('.mp4'))) {
+        const candidateUrl = targetM3u8 || embedUrl
+        if (!candidateUrl) {
+          throw new Error('Không tìm thấy đường dẫn phát video cho tập phim này.')
+        }
+
+        const extractRes = await fetch(`/api/extract-m3u8?url=${encodeURIComponent(candidateUrl)}`, { signal })
+        const extractData = (await extractRes.json()) as { success: boolean; m3u8Url?: string; error?: string }
+
+        if (!extractData.success || !extractData.m3u8Url) {
+          throw new Error(extractData.error || 'Không thể trích xuất luồng video từ player này.')
+        }
+
+        targetM3u8 = extractData.m3u8Url
+      }
+
       // Bước 1: Phân tích m3u8 lấy danh sách segment đã làm sạch quảng cáo
-      const { segmentUrls, adsRemovedCount } = await parseM3U8(m3u8Url, signal)
+      const { segmentUrls, adsRemovedCount } = await parseM3U8(targetM3u8, signal)
       setAdsRemoved(adsRemovedCount)
       const total = segmentUrls.length
       setTotalSegments(total)

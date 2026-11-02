@@ -519,7 +519,7 @@ export default function WatchPage() {
                   </button>
                 )}
 
-                {episodeToPlay?.link_m3u8 && (
+                {(episodeToPlay?.link_m3u8 || episodeToPlay?.link_embed) && (
                   <button
                     onClick={() => setShowDownloadModal(true)}
                     className='px-4 py-1.5 text-xs font-black rounded-full transition cursor-pointer border border-[var(--c-pink)] bg-transparent text-[var(--c-pink)] hover:bg-[var(--c-pink)] hover:text-white shadow-[0_0_10px_rgba(236,72,153,0.15)] hover:shadow-[0_0_15px_rgba(236,72,153,0.3)]'
@@ -811,7 +811,8 @@ export default function WatchPage() {
           <DownloadModal
             isOpen={showDownloadModal}
             onClose={() => setShowDownloadModal(false)}
-            m3u8Url={episodeToPlay.link_m3u8}
+            m3u8Url={episodeToPlay.link_m3u8 || ''}
+            embedUrl={episodeToPlay.link_embed || ''}
             fileName={(() => {
               const rawName = `[${source}] ${movie.name} ${episodeToPlay.name}.mp4`
               return rawName.replace(/[\\/:*?"<>|]/g, '') // sanitize
