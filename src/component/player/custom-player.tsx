@@ -10,6 +10,7 @@ import { findActiveSub } from '@/utils/parse-srt'
 import SubtitleSettingsPanel from '@/component/player/subtitle-settings-panel'
 import { getSubtitleSettings, saveSubtitleSettings, DEFAULT_SUBTITLE_SETTINGS } from '@/utils/subtitle-settings'
 import type { SubtitleSettings } from '@/types/subtitle'
+import { isAdSegment } from '@/utils/m3u8-cleaner'
 
 interface HLSSegment {
   resolvedUri?: string
@@ -304,13 +305,13 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
           const newAdRegions: Array<{ start: number; end: number }> = []
 
           // \d{4,}\.ts = pattern mới kiểu 000010.ts (tên toàn số từ 4 chữ số trở lên)
-          const adRegex = /^(segment_\d+|ads?_.*|promo_.*|\d{4,})\.ts$/i
+          // Nhận diện quảng cáo SSAI qua isAdSegment
 
           media.segments.forEach(segment => {
             const url = segment.resolvedUri || segment.uri || ''
             const fileName = url.split('/').pop()?.split('?')[0]?.split('#')[0] || ''
 
-            if (adRegex.test(fileName)) {
+            if (isAdSegment(url, fileName)) {
               newAdRegions.push({
                 start: currentTimeAcc,
                 end: currentTimeAcc + segment.duration
