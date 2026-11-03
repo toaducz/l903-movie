@@ -10,6 +10,7 @@ import { getCategories, getCountries, getSearchSuggestions } from '@/services/mo
 import { DEFAULT_MOVIE_SOURCE } from '@/utils/env'
 import userIcon from '@/assets/user-icons.png'
 import { useAuth } from '@/providers/auth-provider'
+import { useSearch } from '@/hooks'
 import NotificationBell from '@/component/layout/notification-bell'
 import { getMovieDetailHref } from '@/utils/movie-link'
 
@@ -18,9 +19,11 @@ type DropdownItem = { _id?: string; id?: string; slug: string; name: string }
 export default function Navbar() {
   const router = useRouter()
   const pathname = usePathname()
-  const [search, setSearch] = useState('')
+  const { search, setSearch, clearSearch } = useSearch()
+  const searchInputRef = useRef<HTMLInputElement>(null)
   const [debouncedSearch, setDebouncedSearch] = useState('')
   const [showSuggestions, setShowSuggestions] = useState(false)
+  const [isHovered, setIsHovered] = useState(false)
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [isVisible, setIsVisible] = useState(true)
   const [lastScrollY, setLastScrollY] = useState(0)
@@ -39,13 +42,14 @@ export default function Navbar() {
   })
 
   useEffect(() => {
+    if (!isHovered && !showSuggestions) return
     const timer = setTimeout(() => setDebouncedSearch(search.trim()), 250)
     return () => clearTimeout(timer)
-  }, [search])
+  }, [search, isHovered, showSuggestions])
 
   const { data: suggestionData } = useQuery({
     ...getSearchSuggestions({ keyword: debouncedSearch, limit: 6, source: DEFAULT_MOVIE_SOURCE }),
-    enabled: debouncedSearch.length >= 2
+    enabled: (isHovered || showSuggestions) && debouncedSearch.length >= 2
   })
   const suggestions = (suggestionData ?? []).slice(0, 6)
 
@@ -53,11 +57,25 @@ export default function Navbar() {
     const handleClickOutside = (e: MouseEvent) => {
       if (suggestionRef.current && !suggestionRef.current.contains(e.target as Node)) {
         setShowSuggestions(false)
+        setIsHovered(false)
       }
     }
     document.addEventListener('mousedown', handleClickOutside)
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault()
+        searchInputRef.current?.focus()
+        searchInputRef.current?.select()
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [])
+
   const years = Array.from({ length: new Date().getFullYear() - 1970 + 1 }, (_, i) => ({
     _id: String(1970 + i),
     slug: String(1970 + i),
@@ -104,9 +122,13 @@ export default function Navbar() {
     if (search.trim()) {
       const encoded = encodeURIComponent(search.trim())
       router.push(`/search?q=${encoded}&page=1`)
-      setSearch('')
       setShowSuggestions(false)
+      setIsHovered(false)
       setIsMenuOpen(false)
+      searchInputRef.current?.blur()
+      if (typeof document !== 'undefined' && document.activeElement instanceof HTMLElement) {
+        document.activeElement.blur()
+      }
     }
   }
 
@@ -141,11 +163,6 @@ export default function Navbar() {
       label: secondarySourceLabel,
       tooltip: `Nguồn phụ trợ (${secondarySourceLabel})`
     }
-    // {
-    //   href: { pathname: '/users' },
-    //   label: 'Cộng đồng',
-    //   tooltip: 'Khám phá gu phim của các thành viên khác'
-    // }
   ]
 
   if (pathname === '/login' || pathname === '/home') return null
@@ -227,7 +244,12 @@ export default function Navbar() {
         </div>
 
         {/* Search — Desktop */}
-        <div ref={suggestionRef} className='hidden sm:flex items-center gap-2 relative'>
+        <div
+          ref={suggestionRef}
+          className='hidden sm:flex items-center gap-2 relative'
+          onMouseEnter={() => setIsHovered(true)}
+          onMouseLeave={() => setIsHovered(false)}
+        >
           <form onSubmit={handleSearch} className='flex items-center gap-2'>
             <div
               className='flex items-center gap-2 rounded-xl px-3 py-2 min-w-[220px] cursor-text text-sm border'
@@ -246,6 +268,7 @@ export default function Navbar() {
                 <path d='M21 21l-4.3-4.3' strokeLinecap='round' />
               </svg>
               <input
+                ref={searchInputRef}
                 type='text'
                 placeholder='Tìm phim đi mại dô…'
                 className='bg-transparent text-white text-sm focus:outline-none placeholder-white/30 flex-1 min-w-0'
@@ -254,6 +277,18 @@ export default function Navbar() {
                 onFocus={() => setShowSuggestions(true)}
                 autoComplete='off'
               />
+              {search && (
+                <button
+                  type='button'
+                  onClick={() => clearSearch()}
+                  className='text-white/40 hover:text-white transition-colors duration-200 cursor-pointer p-0.5 shrink-0'
+                  aria-label='Xóa tìm kiếm'
+                >
+                  <svg width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2.5'>
+                    <path d='M18 6L6 18M6 6l12 12' strokeLinecap='round' />
+                  </svg>
+                </button>
+              )}
               <span className='font-mono text-[10px] text-white/25 border border-white/15 rounded px-1.5 py-0.5 shrink-0'>
                 ⌘K
               </span>
@@ -268,10 +303,9 @@ export default function Navbar() {
               {suggestions.map(movie => (
                 <button
                   key={movie.slug}
-                  className='flex items-center gap-3 w-full px-3 py-2.5 hover:bg-white/5 transition-colors text-left'
+                  className='flex items-center gap-3 w-full px-3 py-2.5 hover:bg-white/5 transition-colors text-left cursor-pointer'
                   onMouseDown={() => {
                     router.push(getMovieDetailHref(movie.slug, movie.source))
-                    setSearch('')
                     setShowSuggestions(false)
                   }}
                 >
@@ -311,14 +345,11 @@ export default function Navbar() {
 
         {/* Notification Bell + User avatar */}
         <div className='flex items-center gap-2'>
-          <NotificationBell
-          // isOpen={openMenu === 'notification'}
-          // onToggle={() => setOpenMenu(openMenu === 'notification' ? null : 'notification')}
-          />
+          <NotificationBell />
           <Link
             key={'user-icon'}
             href={user?.id !== undefined || null ? '/profile' : '/login'}
-            className='rounded-full p-1.5 transition-all duration-200 hover:opacity-80'
+            className='rounded-full p-1.5 transition-all duration-200 hover:opacity-80 cursor-pointer'
             style={{ background: 'rgba(255,255,255,.08)' }}
           >
             <Image src={userIcon} alt='user' width={32} height={32} className='rounded-full' />
@@ -335,22 +366,38 @@ export default function Navbar() {
           {/* Search — Mobile */}
           <div className='relative'>
             <form onSubmit={handleSearch} className='flex items-center gap-2'>
-              <input
-                type='text'
-                placeholder='Tìm theo tên phim'
-                className='flex-1 px-4 py-2.5 rounded-xl text-white text-sm focus:outline-none border'
+              <div
+                className='flex-1 flex items-center px-4 py-2.5 rounded-xl border'
                 style={{
                   background: 'rgba(255,255,255,.06)',
                   borderColor: 'var(--c-line)'
                 }}
-                value={search}
-                onChange={e => setSearch(e.target.value)}
-                onFocus={() => setShowSuggestions(true)}
-                autoComplete='off'
-              />
+              >
+                <input
+                  type='text'
+                  placeholder='Tìm theo tên phim'
+                  className='w-full bg-transparent text-white text-sm focus:outline-none'
+                  value={search}
+                  onChange={e => setSearch(e.target.value)}
+                  onFocus={() => setShowSuggestions(true)}
+                  autoComplete='off'
+                />
+                {search && (
+                  <button
+                    type='button'
+                    onClick={() => clearSearch()}
+                    className='text-white/40 hover:text-white transition-colors duration-200 cursor-pointer p-1 shrink-0'
+                    aria-label='Xóa tìm kiếm'
+                  >
+                    <svg width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2.5'>
+                      <path d='M18 6L6 18M6 6l12 12' strokeLinecap='round' />
+                    </svg>
+                  </button>
+                )}
+              </div>
               <button
                 type='submit'
-                className='px-4 py-2.5 rounded-xl text-sm font-bold transition-colors disabled:opacity-40 text-white'
+                className='px-4 py-2.5 rounded-xl text-sm font-bold transition-colors disabled:opacity-40 text-white cursor-pointer'
                 style={{ background: 'var(--c-pink)' }}
                 disabled={!search.trim()}
               >
@@ -365,10 +412,9 @@ export default function Navbar() {
                 {suggestions.map(movie => (
                   <button
                     key={movie.slug}
-                    className='flex items-center gap-3 w-full px-3 py-2.5 hover:bg-white/5 transition-colors text-left'
+                    className='flex items-center gap-3 w-full px-3 py-2.5 hover:bg-white/5 transition-colors text-left cursor-pointer'
                     onMouseDown={() => {
                       router.push(getMovieDetailHref(movie.slug, movie.source))
-                      setSearch('')
                       setShowSuggestions(false)
                       setIsMenuOpen(false)
                     }}

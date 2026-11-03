@@ -10,6 +10,7 @@ import { AuthProvider } from '@/providers/auth-provider'
 import Footer from '@/component/layout/footer'
 import ChatWidget from '@/component/chat-widget/chat-widget'
 import WatchedProvider from '@/providers/watched-provider'
+import { SearchProvider } from '@/providers/search-provider'
 
 const beVietnamPro = Be_Vietnam_Pro({
   variable: '--font-be-vietnam-pro',
@@ -61,12 +62,14 @@ export default function RootLayout({
           </Suspense>
           <AuthProvider>
             <WatchedProvider>
+              <SearchProvider>
               <div className='c-app'>
                 <Navbar />
                 {children}
                 <Footer />
               </div>
               <ChatWidget />
+              </SearchProvider>
             </WatchedProvider>
           </AuthProvider>
         </QueryProvider>

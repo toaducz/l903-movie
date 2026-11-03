@@ -4,3 +4,4 @@ export { useFinishFromContinue, continueKey, restoreContinue } from './use-finis
 export { useFinishBanner } from './use-finish-banner'
 export { useAuth } from './use-auth'
 export { useWatched } from './use-watched'
+export { useSearch } from './use-search'
