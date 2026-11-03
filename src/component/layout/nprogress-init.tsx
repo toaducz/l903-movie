@@ -5,19 +5,17 @@ import NProgress from 'nprogress'
 import 'nprogress/nprogress.css'
 import { usePathname, useSearchParams } from 'next/navigation'
 
-// Cấu hình NProgress
+// Cấu hình NProgress mượt mà, trickle từ tốn tránh vọt lên 99% quá sớm
 NProgress.configure({
   showSpinner: false,
-  minimum: 0.1,
+  minimum: 0.15,
   easing: 'ease',
-  speed: 500,
-  trickleSpeed: 200
+  speed: 300,
+  trickleSpeed: 350
 })
 
-// Biến global để theo dõi trạng thái
 let isNProgressInitialized = false
 
-// Khai báo interface cho window object để thêm NProgress
 declare global {
   interface Window {
     NProgress: typeof NProgress
@@ -27,18 +25,25 @@ declare global {
 export function initializeNProgress() {
   if (typeof window === 'undefined' || isNProgressInitialized) return
 
-  // Thêm custom styles cho NProgress
+  // Thêm custom styles cho NProgress đồng bộ màu thương hiệu
   const style = document.createElement('style')
+  style.id = 'nprogress-custom-style'
   style.textContent = `
+    #nprogress {
+      pointer-events: none;
+    }
     #nprogress .bar {
-      background: #0070f3 !important;
+      background: #ec4899 !important;
       height: 3px !important;
-      z-index: 9999 !important;
+      z-index: 99999 !important;
+    }
+    #nprogress .peg {
+      box-shadow: 0 0 10px #ec4899, 0 0 5px #ec4899 !important;
     }
   `
   document.head.appendChild(style)
 
-  // Bắt sự kiện click cho thẻ <a> để hỗ trợ điều hướng bằng href
+  // Bắt sự kiện click cho thẻ <a> để kích hoạt thanh tải
   document.addEventListener('click', (e: MouseEvent) => {
     const target = e.target as HTMLElement
     if (!target) return
@@ -46,30 +51,36 @@ export function initializeNProgress() {
     const linkElement = target.closest('a')
     if (!linkElement) return
 
-    // Kiểm tra xem link có phải là internal link không
-    if (
-      linkElement.href &&
-      linkElement.href.startsWith(window.location.origin) &&
-      linkElement.href !== window.location.href &&
-      !linkElement.hasAttribute('download') &&
-      (!linkElement.target || linkElement.target === '_self')
-    ) {
-      NProgress.start()
+    const href = linkElement.getAttribute('href')
+    if (!href || href.startsWith('#') || href.startsWith('mailto:') || href.startsWith('tel:') || href.startsWith('javascript:')) {
+      return
+    }
 
-      // Safety timeout để tránh treo thanh progress
-      setTimeout(() => {
-        const status = NProgress.status
-        if (status !== null && status < 1) {
-          NProgress.done()
-        }
-      }, 3000)
+    if (linkElement.target === '_blank' || linkElement.hasAttribute('download')) {
+      return
+    }
+
+    try {
+      const targetUrl = new URL(linkElement.href, window.location.href)
+      const currentUrl = new URL(window.location.href)
+
+      // Bỏ qua nếu click vào chính URL hiện tại (tránh chạy thanh vô nghĩa)
+      if (targetUrl.pathname === currentUrl.pathname && targetUrl.search === currentUrl.search) {
+        return
+      }
+
+      // Chỉ kích hoạt khi điều hướng nội bộ sang trang khác
+      if (targetUrl.origin === currentUrl.origin) {
+        NProgress.start()
+      }
+    } catch {
+      // Bỏ qua nếu URL không hợp lệ
     }
   })
 
   isNProgressInitialized = true
 }
 
-// Component để khởi tạo NProgress
 export default function NProgressInit() {
   const pathname = usePathname()
   const searchParams = useSearchParams()
@@ -77,34 +88,27 @@ export default function NProgressInit() {
 
   useEffect(() => {
     initializeNProgress()
-
-    // Cho phép gọi NProgress từ bất kỳ component nào
     window.NProgress = NProgress
   }, [])
 
-  // Phát hiện thay đổi URL (bao gồm router.push và href)
+  // Khi URL thay đổi = ĐÃ SANG TRANG MỚI -> Kết thúc (done) thanh tiến trình
   useEffect(() => {
     const currentPath = `${pathname}${searchParams.toString() ? '?' + searchParams : ''}`
 
-    // Nếu URL thay đổi, kích hoạt NProgress
-    if (prevPathRef.current !== null && prevPathRef.current !== currentPath) {
-      NProgress.start()
+    // Lần đầu mount: chỉ lưu URL hiện tại, không kích hoạt
+    if (prevPathRef.current === null) {
+      prevPathRef.current = currentPath
+      return
     }
 
-    // Hoàn thành NProgress sau khi trang tải xong
-    const timer = setTimeout(() => {
+    // Nếu URL thực sự thay đổi so với trang trước -> kết thúc thanh tiến trình ngay
+    if (prevPathRef.current !== currentPath) {
+      prevPathRef.current = currentPath
       NProgress.done()
-    }, 300) // Delay nhỏ để đảm bảo thanh progress hiển thị mượt
-
-    // Cập nhật prevPath
-    prevPathRef.current = currentPath
-
-    // Cleanup timer
-    return () => clearTimeout(timer)
+    }
   }, [pathname, searchParams])
 
   return null
 }
 
-// Export để sử dụng từ bất kỳ component nào
 export { NProgress }

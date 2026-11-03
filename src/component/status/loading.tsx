@@ -7,9 +7,10 @@ import Image from 'next/image'
 
 interface LoadingProps {
   image?: string
+  className?: string
 }
 
-const Loading: React.FC<LoadingProps> = ({ image }) => {
+const Loading: React.FC<LoadingProps> = ({ image, className = '' }) => {
   const selectedImage = useMemo(() => {
     return Math.random() < 0.7 ? loading : animeLoading
   }, [])
@@ -17,7 +18,9 @@ const Loading: React.FC<LoadingProps> = ({ image }) => {
   const isAnime = selectedImage === animeLoading
 
   return (
-    <div className='flex items-center justify-center min-h-screen min-w-screen bg-black'>
+    <div
+      className={`flex items-center justify-center w-full min-h-[calc(100dvh-68px)] flex-1 bg-transparent overflow-hidden ${className}`.trim()}
+    >
       <div>
         <Image
           unoptimized
