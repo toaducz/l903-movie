@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { verifySupabaseJwt } from '@/lib/verify-supabase-jwt'
 
 export const config = {
   matcher: ['/((?!api|_next/static|_next/image|riv|favicon.ico).*)']
@@ -12,6 +13,34 @@ const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env
   }
 })
 
+// Legacy JWT secret (Supabase Dashboard → Project Settings → API → JWT Secret).
+// Có secret → verify token tại chỗ, không tốn round-trip tới Supabase mỗi lần chuyển trang.
+const JWT_SECRET = process.env.SUPABASE_JWT_SECRET
+
+// Fallback khi chưa có secret: nhớ token đã được Supabase xác nhận trong ít phút
+const VERIFIED_TTL_MS = 5 * 60 * 1000
+const MAX_CACHE_ENTRIES = 500
+const verifiedTokens = new Map<string, number>()
+
+async function isValidAccessToken(token: string): Promise<boolean> {
+  if (JWT_SECRET) {
+    return (await verifySupabaseJwt(token, JWT_SECRET)) !== null
+  }
+
+  const cachedUntil = verifiedTokens.get(token)
+  if (cachedUntil && cachedUntil > Date.now()) return true
+
+  const { data, error } = await supabase.auth.getUser(token)
+  if (!data?.user || error) {
+    verifiedTokens.delete(token)
+    return false
+  }
+
+  if (verifiedTokens.size >= MAX_CACHE_ENTRIES) verifiedTokens.clear()
+  verifiedTokens.set(token, Date.now() + VERIFIED_TTL_MS)
+  return true
+}
+
 export async function middleware(req: NextRequest) {
   const token = req.cookies.get('sb-access-token')?.value
   const refreshToken = req.cookies.get('sb-refresh-token')?.value
@@ -21,12 +50,9 @@ export async function middleware(req: NextRequest) {
   let isAuthenticated = false
   let newSession = null
 
-  // Gọi Supabase để verify tính hợp lệ của token thay vì chỉ check cookie tồn tại
+  // Verify chữ ký + hạn của token thay vì chỉ check cookie tồn tại
   if (token) {
-    const { data, error } = await supabase.auth.getUser(token)
-    if (data?.user && !error) {
-      isAuthenticated = true
-    }
+    isAuthenticated = await isValidAccessToken(token)
   }
 
   // Nếu access token hết hạn / fake nhưng lại có refresh token -> thử refresh
