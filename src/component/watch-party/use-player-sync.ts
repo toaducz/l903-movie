@@ -31,7 +31,7 @@ const SEEK_SETTLE_MS = 300
 export function usePlayerSync(opts: Options) {
   const { player } = opts
   const guardRef = useRef(createEchoGuard())
-  const lastRef = useRef<Pick<ControlMessage, 'sentAt' | 'by'> | null>(null)
+  const lastRef = useRef<ControlMessage | null>(null)
   const optsRef = useRef(opts)
   useEffect(() => {
     optsRef.current = opts
@@ -115,12 +115,17 @@ export function usePlayerSync(opts: Options) {
     }
   }, [])
 
-  /** Áp lệnh từ người khác (last-write-wins); player chưa có metadata thì đợi loadedmetadata */
-  const applyRemote = useCallback(
-    (m: ControlMessage) => {
-      if (!isNewer(m, lastRef.current)) return
-      lastRef.current = m
-      const p = optsRef.current.player
+  /** Last-write-wins: nhận lệnh nếu mới hơn lệnh cuối đã áp / đã gửi */
+  const accept = useCallback((m: ControlMessage): boolean => {
+    if (!isNewer(m, lastRef.current)) return false
+    lastRef.current = m
+    return true
+  }, [])
+
+  /** Áp vị trí + play/pause (không kiểm LWW); player chưa có metadata thì đợi loadedmetadata */
+  const applyPosition = useCallback(
+    (m: ControlMessage, player?: Player | null) => {
+      const p = player ?? optsRef.current.player
       if (!p || p.isDisposed()) return
       if (p.readyState() < 1) p.one('loadedmetadata', () => applyNow(p, m))
       else applyNow(p, m)
@@ -128,11 +133,33 @@ export function usePlayerSync(opts: Options) {
     [applyNow]
   )
 
-  /** Trạng thái hiện tại của mình để trả lời state_request; null khi chưa đồng bộ lần nào */
+  /** Áp lệnh từ người khác cùng tập (last-write-wins) */
+  const applyRemote = useCallback(
+    (m: ControlMessage) => {
+      if (accept(m)) applyPosition(m)
+    },
+    [accept, applyPosition]
+  )
+
+  /** Lệnh này chính là lệnh cuối đã áp (trả lời state_request lặp lại) → dùng để chỉnh lại vị trí khi bị lệch */
+  const isCurrent = useCallback(
+    (m: Pick<ControlMessage, 'sentAt' | 'by'>) =>
+      !!lastRef.current && lastRef.current.sentAt === m.sentAt && lastRef.current.by === m.by,
+    []
+  )
+
+  /**
+   * Trạng thái của mình để trả lời state_request; null khi chưa đồng bộ lần nào.
+   * Giữ sentAt/by của lệnh cuối (để LWW không coi câu trả lời là lệnh mới) và lùi vị trí về thời điểm đó
+   * — máy nhận bù trễ lại sẽ ra đúng vị trí hiện tại.
+   */
   const currentControl = useCallback((): ControlMessage | null => {
     const p = optsRef.current.player
-    if (!p || p.isDisposed() || !lastRef.current) return null
-    return build(p, p.paused() ? 'pause' : 'play')
+    const last = lastRef.current
+    if (!p || p.isDisposed() || !last) return null
+    const now = build(p, p.paused() ? 'pause' : 'play')
+    const elapsed = now.isPlaying ? (now.sentAt - last.sentAt) / 1000 : 0
+    return { ...now, positionSec: Math.max(0, now.positionSec - elapsed), sentAt: last.sentAt, by: last.by }
   }, [build])
 
   /** Mình chủ động gửi lệnh không đến từ player (vd "Tiếp tục từ mm:ss", đổi tập) → ghi nhận để LWW */
@@ -140,5 +167,5 @@ export function usePlayerSync(opts: Options) {
     lastRef.current = m
   }, [])
 
-  return { applyRemote, currentControl, markSent, guard: guardRef.current }
+  return { accept, isCurrent, applyPosition, applyRemote, currentControl, markSent, guard: guardRef.current }
 }
