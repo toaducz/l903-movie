@@ -36,6 +36,9 @@ describe('targetPosition', () => {
   it('vượt độ dài video → clamp về duration (Review Focus 2)', () => {
     expect(targetPosition(msg(), 3000, 101)).toBe(101)
   })
+  it('sentAt ở tương lai (đồng hồ lệch) → không lùi vị trí', () => {
+    expect(targetPosition(msg({ sentAt: 5000 }), 3000, null)).toBe(100)
+  })
   it('không âm khi đồng hồ lệch ngược', () => {
     expect(targetPosition(msg({ positionSec: 0 }), 0, 50)).toBe(0)
   })

@@ -20,7 +20,8 @@ const ECHO_GUARD_MS = 800
 
 /** Vị trí cần tới: đang phát thì bù thời gian đã trôi kể từ lúc gửi; clamp trong [0, duration] */
 export function targetPosition(msg: ControlMessage, serverNow: number, duration: number | null): number {
-  const elapsed = msg.isPlaying ? (serverNow - msg.sentAt) / 1000 : 0
+  // sentAt ở tương lai (đồng hồ lệch, vẫn trong ±30s) → coi như vừa gửi, không lùi vị trí
+  const elapsed = msg.isPlaying ? Math.max(0, serverNow - msg.sentAt) / 1000 : 0
   const raw = Math.max(0, msg.positionSec + elapsed)
   return duration !== null && Number.isFinite(duration) && duration > 0 ? Math.min(raw, duration) : raw
 }

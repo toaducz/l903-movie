@@ -192,5 +192,17 @@ export function usePlayerSync(opts: Options) {
     lastRef.current = m
   }, [])
 
-  return { accept, isCurrent, applyPosition, applyRemote, currentControl, markSent, guard: guardRef.current }
+  /** sentAt cho lệnh mình tự gửi: luôn mới hơn lệnh cuối (kể cả lệnh nhận từ người khác) */
+  const nextOwnSentAt = useCallback(() => nextSentAt(optsRef.current.serverNow(), lastRef.current), [])
+
+  return {
+    accept,
+    isCurrent,
+    applyPosition,
+    applyRemote,
+    currentControl,
+    markSent,
+    nextOwnSentAt,
+    guard: guardRef.current
+  }
 }

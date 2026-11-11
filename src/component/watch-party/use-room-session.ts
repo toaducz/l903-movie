@@ -8,7 +8,7 @@ import { beaconRoomState, logRoomEvent, saveRoomState, type RoomDetail } from '@
 import { formatPosition } from '@/lib/watch-room/chat-format'
 import { createEventThrottle } from '@/lib/watch-room/event-throttle'
 import { findEpisode, roomEpisodeOf, sameEpisode, sameMovie } from '@/lib/watch-room/room-media'
-import { nextSentAt, type ControlMessage, type ControlType } from '@/lib/watch-room/sync'
+import type { ControlMessage, ControlType } from '@/lib/watch-room/sync'
 import type { LoggableRoomEventType, RoomEpisode, RoomMessage, RoomMovie } from '@/types/watch-room'
 import { useServerClock } from './use-server-clock'
 import { usePlayerSync } from './use-player-sync'
@@ -39,7 +39,6 @@ export function useRoomSession(room: RoomDetail, me: RoomMe, onMessage: (m: Room
   const [autoplayBlocked, setAutoplayBlocked] = useState(false)
   const [settled, setSettled] = useState(false) // đợi câu trả lời state_reply một chút trước khi hiện card
   const pendingRef = useRef<ControlMessage | null>(null)
-  const lastSent = useRef<ControlMessage | null>(null)
   const lastReactionRef = useRef(0)
 
   const names = useMemo(() => new Map(room.members.map(m => [m.userId, m.displayName])), [room.members])
@@ -118,7 +117,7 @@ export function useRoomSession(room: RoomDetail, me: RoomMe, onMessage: (m: Room
     onAutoplayBlocked: () => setAutoplayBlocked(true),
     autoplayBlocked
   })
-  const { accept, isCurrent, markSent, applyPosition, guard } = sync
+  const { accept, isCurrent, markSent, nextOwnSentAt, applyPosition, guard } = sync
 
   // ── Lệnh đến từ người khác (control) hoặc câu trả lời trạng thái (state_reply) ──
   const handleIncoming = useCallback(
@@ -168,16 +167,15 @@ export function useRoomSession(room: RoomDetail, me: RoomMe, onMessage: (m: Room
         isPlaying,
         episode: next.episode,
         movie: next.movie,
-        sentAt: nextSentAt(serverNow(), lastSent.current),
+        sentAt: nextOwnSentAt(),
         by: me.userId
       }
       markSent(m)
-      lastSent.current = m
       sendControl(m)
       setJoined(true)
       return m
     },
-    [serverNow, me.userId, markSent, sendControl]
+    [nextOwnSentAt, me.userId, markSent, sendControl]
   )
 
   const changeEpisode = useCallback(
