@@ -76,7 +76,7 @@ importers:
         specifier: ^5
         version: 5.9.3
       vitest:
-        specifier: '3'
+        specifier: ^3.2.7
         version: 3.2.7(@types/node@20.19.37)(jiti@2.6.1)(lightningcss@1.31.1)
 
 packages:
@@ -3896,7 +3896,7 @@ snapshots:
 
   estree-walker@3.0.3:
     dependencies:
-      '@types/estree': 1.0.8
+      '@types/estree': 1.0.10
 
   esutils@2.0.3: {}
 
