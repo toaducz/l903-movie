@@ -45,6 +45,15 @@ export function useRoomChat(roomId: string) {
     void loadInitial()
   }, [loadInitial])
 
+  /** Nối lại realtime → postgres_changes không phát lại tin bị lỡ: tải trang mới nhất rồi gộp (bỏ trùng theo id) */
+  const catchUp = useCallback(async () => {
+    try {
+      addMessages((await getRoomMessages(roomId)).data)
+    } catch {
+      // lần nối lại sau sẽ thử tiếp
+    }
+  }, [roomId, addMessages])
+
   const loadOlder = useCallback(async () => {
     if (loadingOlder.current || !hasMore) return
     const oldest = messages.reduce<string | null>(
@@ -99,5 +108,17 @@ export function useRoomChat(roomId: string) {
     [pending, deliver]
   )
 
-  return { messages, pending, hasMore, loading, loadError, reload: loadInitial, loadOlder, addMessages, send, retry }
+  return {
+    messages,
+    pending,
+    hasMore,
+    loading,
+    loadError,
+    reload: loadInitial,
+    catchUp,
+    loadOlder,
+    addMessages,
+    send,
+    retry
+  }
 }

@@ -1,8 +1,14 @@
 import { describe, expect, it } from 'vitest'
 import {
+  canReplyState,
   createEchoGuard,
   estimateServerOffset,
   isNewer,
+  isPlausibleSentAt,
+  nextSentAt,
+  shouldApplyQueued,
+  tokenRefreshDelay,
+  tokenRetryDelay,
   msUntilTokenRefresh,
   shouldSeek,
   targetPosition,
@@ -95,5 +101,64 @@ describe('createEchoGuard', () => {
     const now = Date.now()
     guard.suppress('pause', 2000)
     expect(guard.isSuppressed('pause', now + 1500)).toBe(true)
+  })
+})
+
+describe('isPlausibleSentAt (M4)', () => {
+  const now = 1_000_000
+  it('lệch quá ±30s → bỏ', () => {
+    expect(isPlausibleSentAt(now + 31_000, now)).toBe(false)
+    expect(isPlausibleSentAt(now - 31_000, now)).toBe(false)
+    expect(isPlausibleSentAt(now + 5_000, now)).toBe(true)
+  })
+  it('state_reply được phép mang sentAt cũ (lệnh cuối), vẫn chặn tương lai', () => {
+    expect(isPlausibleSentAt(now - 3_600_000, now, { allowPast: true })).toBe(true)
+    expect(isPlausibleSentAt(now + 31_000, now, { allowPast: true })).toBe(false)
+  })
+})
+
+describe('nextSentAt (M4)', () => {
+  it('luôn mới hơn lệnh cuối dù đồng hồ lệch', () => {
+    expect(nextSentAt(1000, { sentAt: 5000, by: 'x' })).toBe(5001)
+    expect(nextSentAt(9000, { sentAt: 5000, by: 'x' })).toBe(9000)
+    expect(nextSentAt(9000, null)).toBe(9000)
+  })
+})
+
+describe('shouldApplyQueued (M1)', () => {
+  it('lệnh trong hàng chờ chỉ áp nếu vẫn là lệnh mới nhất', () => {
+    const queued = { sentAt: 1000, by: 'a' }
+    expect(shouldApplyQueued(queued, { sentAt: 1000, by: 'a' })).toBe(true)
+    expect(shouldApplyQueued(queued, { sentAt: 2000, by: 'b' })).toBe(false)
+    expect(shouldApplyQueued(queued, null)).toBe(true)
+  })
+})
+
+describe('canReplyState (H1)', () => {
+  const base = { hasMetadata: true, localPlaying: true, lastIsPlaying: true, autoplayBlocked: false }
+  it('đang phát khớp lệnh cuối → trả lời', () => {
+    expect(canReplyState(base)).toBe(true)
+    expect(canReplyState({ ...base, localPlaying: false, lastIsPlaying: false })).toBe(true)
+  })
+  it('chưa có metadata / bị chặn autoplay / lệnh bảo phát mà máy đang dừng → im lặng', () => {
+    expect(canReplyState({ ...base, hasMetadata: false })).toBe(false)
+    expect(canReplyState({ ...base, autoplayBlocked: true })).toBe(false)
+    expect(canReplyState({ ...base, localPlaying: false })).toBe(false)
+  })
+})
+
+describe('tokenRefreshDelay / tokenRetryDelay (M3)', () => {
+  it('expiresAt không hợp lệ → mặc định 5 phút', () => {
+    expect(tokenRefreshDelay(null, 0)).toBe(300_000)
+    expect(tokenRefreshDelay(Number.NaN, 0)).toBe(300_000)
+  })
+  it('hợp lệ → trước hạn 60s, tối thiểu 15s', () => {
+    expect(tokenRefreshDelay(1000, 900_000)).toBe(40_000)
+    expect(tokenRefreshDelay(1000, 999_000)).toBe(15_000)
+  })
+  it('lỗi liên tiếp → backoff 15s, 30s, 60s… tối đa 5 phút', () => {
+    expect(tokenRetryDelay(0)).toBe(15_000)
+    expect(tokenRetryDelay(1)).toBe(30_000)
+    expect(tokenRetryDelay(10)).toBe(300_000)
   })
 })

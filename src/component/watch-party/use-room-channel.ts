@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { RealtimeChannel } from '@supabase/supabase-js'
 import { getBrowserSupabase } from '@/lib/watch-room/supabase-browser'
-import { msUntilTokenRefresh, type ControlMessage } from '@/lib/watch-room/sync'
+import { tokenRefreshDelay, tokenRetryDelay, type ControlMessage } from '@/lib/watch-room/sync'
 import { mapMessageRow } from '@/lib/watch-room/room-mapper'
 import {
   parseControlMessage,
@@ -32,7 +32,6 @@ export type RoomChannelHandlers = {
 type PresencePayload = Omit<PresenceInfo, 'userId' | 'displayName' | 'onlineAt'>
 
 const MAX_BACKOFF_SEC = 15
-const MIN_TOKEN_REFRESH_MS = 15_000
 
 export function useRoomChannel(
   roomId: string,
@@ -74,18 +73,24 @@ export function useRoomChannel(
     let retryTimer: ReturnType<typeof setTimeout> | undefined
     let tokenTimer: ReturnType<typeof setTimeout> | undefined
 
-    // Lấy token mới + hẹn làm mới trước hạn 60s (Review Focus 3)
-    const refreshToken = async (): Promise<boolean> => {
+    let tokenFailures = 0
+
+    // Lấy token mới + hẹn làm mới trước hạn 60s (Review Focus 3).
+    // Lỗi: lúc đang nối (connect) thì để scheduleReconnect lo; lúc làm mới định kỳ thì tự thử lại có backoff.
+    const refreshToken = async (retryOnFail: boolean): Promise<boolean> => {
       clearTimeout(tokenTimer)
       try {
         const { token, expiresAt } = await fetchRealtimeToken()
         if (disposed) return false
         await supabase.realtime.setAuth(token)
-        const wait = Math.max(MIN_TOKEN_REFRESH_MS, msUntilTokenRefresh(expiresAt, Date.now()))
-        tokenTimer = setTimeout(() => void refreshToken(), wait)
+        tokenFailures = 0
+        tokenTimer = setTimeout(() => void refreshToken(true), tokenRefreshDelay(expiresAt, Date.now()))
         return true
       } catch {
-        if (!disposed) tokenTimer = setTimeout(() => void refreshToken(), MIN_TOKEN_REFRESH_MS)
+        if (!disposed && retryOnFail) {
+          tokenTimer = setTimeout(() => void refreshToken(true), tokenRetryDelay(tokenFailures))
+        }
+        tokenFailures++
         return false
       }
     }
@@ -104,7 +109,7 @@ export function useRoomChannel(
 
     const connect = async () => {
       if (disposed) return
-      if (!(await refreshToken())) return scheduleReconnect()
+      if (!(await refreshToken(false))) return scheduleReconnect()
       if (disposed) return
 
       const { userId } = meRef.current

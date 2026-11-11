@@ -38,6 +38,36 @@ export function isNewer(
   return msg.by > last.by
 }
 
+const MAX_CLOCK_SKEW_MS = 30_000
+
+/** sentAt lệch quá ±30s so với đồng hồ server → lệnh hỏng / giả (state_reply được mang sentAt cũ) */
+export function isPlausibleSentAt(sentAt: number, serverNow: number, opts: { allowPast?: boolean } = {}): boolean {
+  if (sentAt - serverNow > MAX_CLOCK_SKEW_MS) return false
+  return opts.allowPast || serverNow - sentAt <= MAX_CLOCK_SKEW_MS
+}
+
+/** sentAt cho lệnh của mình: không bao giờ cũ hơn lệnh cuối (đồng hồ lệch thì lệnh thật vẫn thắng) */
+export const nextSentAt = (serverNow: number, last: Pick<ControlMessage, 'sentAt' | 'by'> | null): number =>
+  last ? Math.max(serverNow, last.sentAt + 1) : serverNow
+
+/** Lệnh đang chờ loadedmetadata chỉ được áp nếu chưa có lệnh nào mới hơn */
+export const shouldApplyQueued = (
+  queued: Pick<ControlMessage, 'sentAt' | 'by'>,
+  last: Pick<ControlMessage, 'sentAt' | 'by'> | null
+): boolean => !last || !isNewer(last, queued)
+
+/** Chỉ trả lời state_request khi player của mình thật sự đang theo nhịp phòng */
+export function canReplyState(s: {
+  hasMetadata: boolean
+  localPlaying: boolean
+  lastIsPlaying: boolean
+  autoplayBlocked: boolean
+}): boolean {
+  if (!s.hasMetadata || s.autoplayBlocked) return false
+  // lệnh cuối bảo phát mà máy mình đang dừng (bị chặn / chưa tải) → trạng thái của mình không đáng tin
+  return s.localPlaying || !s.lastIsPlaying
+}
+
 export type ClockSample = { sentAt: number; receivedAt: number; serverTime: number }
 
 /** offset = serverTime + RTT/2 − receivedAt, lấy mẫu RTT nhỏ nhất (ít nhiễu nhất) */
@@ -51,6 +81,19 @@ export function estimateServerOffset(samples: ClockSample[]): number {
 /** Bao lâu nữa thì lấy access token mới cho Realtime (trước hạn 60s) */
 export const msUntilTokenRefresh = (expiresAtSec: number, nowMs: number): number =>
   Math.max(0, expiresAtSec * 1000 - nowMs - TOKEN_REFRESH_LEAD_MS)
+
+const DEFAULT_TOKEN_REFRESH_MS = 5 * 60_000
+const MIN_TOKEN_REFRESH_MS = 15_000
+
+/** Lịch làm mới token: expiresAt hỏng → 5 phút; còn lại trước hạn 60s nhưng không dưới 15s (tránh vòng lặp chặt) */
+export function tokenRefreshDelay(expiresAtSec: unknown, nowMs: number): number {
+  if (typeof expiresAtSec !== 'number' || !Number.isFinite(expiresAtSec)) return DEFAULT_TOKEN_REFRESH_MS
+  return Math.max(MIN_TOKEN_REFRESH_MS, msUntilTokenRefresh(expiresAtSec, nowMs))
+}
+
+/** Lấy token lỗi liên tiếp → 15s, 30s, 60s… tối đa 5 phút */
+export const tokenRetryDelay = (failures: number): number =>
+  Math.min(DEFAULT_TOKEN_REFRESH_MS, MIN_TOKEN_REFRESH_MS * 2 ** Math.max(0, failures))
 
 export type EchoKind = 'seek' | 'play' | 'pause'
 

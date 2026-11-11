@@ -44,7 +44,7 @@ interface VideoPlayerProps {
   /** Trong phòng "Xem chung": không tự seek tới tiến trình đã lưu, không tự play khi load (vẫn lưu tiến trình) */
   disableProgressRestore?: boolean
   /** Gọi NGAY TRƯỚC mỗi lần code tự đổi currentTime (nhảy quảng cáo, khôi phục tiến trình) — để phòng không phát lại */
-  onSeekProgrammatic?: (kind: 'seek') => void
+  onSeekProgrammatic?: () => void
 }
 
 export const VideoPlayer: React.FC<VideoPlayerProps> = ({
@@ -365,7 +365,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
             // 2. Ép tua đi (CHỈ 1 LẦN NHỜ CỜ KHÓA)
             if (!isSkippingAd) {
               isSkippingAd = true
-              onSeekProgrammaticRef.current?.('seek')
+              onSeekProgrammaticRef.current?.()
               player.currentTime(upcoming.end + 0.2)
             }
           } else {
@@ -446,7 +446,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
         if (saved > 0) {
           player.one('loadedmetadata', () => {
             // Chỉ seek nếu tập này thực sự có tiến trình cũ
-            onSeekProgrammaticRef.current?.('seek')
+            onSeekProgrammaticRef.current?.()
             player.currentTime(saved)
             player.play()?.catch(() => {})
           })
@@ -532,7 +532,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
 
           player.one('loadedmetadata', () => {
             // Luôn luôn seek về mốc thời gian của tập mới (kể cả là 0) để reset player
-            onSeekProgrammaticRef.current?.('seek')
+            onSeekProgrammaticRef.current?.()
             player.currentTime(savedOnChange)
             player.play()?.catch(() => {})
           })

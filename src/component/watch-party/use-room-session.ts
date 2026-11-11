@@ -8,7 +8,7 @@ import { beaconRoomState, logRoomEvent, saveRoomState, type RoomDetail } from '@
 import { formatPosition } from '@/lib/watch-room/chat-format'
 import { createEventThrottle } from '@/lib/watch-room/event-throttle'
 import { findEpisode, roomEpisodeOf, sameEpisode, sameMovie } from '@/lib/watch-room/room-media'
-import type { ControlMessage, ControlType } from '@/lib/watch-room/sync'
+import { nextSentAt, type ControlMessage, type ControlType } from '@/lib/watch-room/sync'
 import type { LoggableRoomEventType, RoomEpisode, RoomMessage, RoomMovie } from '@/types/watch-room'
 import { useServerClock } from './use-server-clock'
 import { usePlayerSync } from './use-player-sync'
@@ -39,6 +39,7 @@ export function useRoomSession(room: RoomDetail, me: RoomMe, onMessage: (m: Room
   const [autoplayBlocked, setAutoplayBlocked] = useState(false)
   const [settled, setSettled] = useState(false) // đợi câu trả lời state_reply một chút trước khi hiện card
   const pendingRef = useRef<ControlMessage | null>(null)
+  const lastSent = useRef<ControlMessage | null>(null)
   const lastReactionRef = useRef(0)
 
   const names = useMemo(() => new Map(room.members.map(m => [m.userId, m.displayName])), [room.members])
@@ -114,14 +115,16 @@ export function useRoomSession(room: RoomDetail, me: RoomMe, onMessage: (m: Room
     episode,
     movie,
     send: sendFromPlayer,
-    onAutoplayBlocked: () => setAutoplayBlocked(true)
+    onAutoplayBlocked: () => setAutoplayBlocked(true),
+    autoplayBlocked
   })
   const { accept, isCurrent, markSent, applyPosition, guard } = sync
 
   // ── Lệnh đến từ người khác (control) hoặc câu trả lời trạng thái (state_reply) ──
   const handleIncoming = useCallback(
     (m: ControlMessage, kind: 'control' | 'reply') => {
-      const fresh = accept(m)
+      // state_reply mang sentAt của lệnh cuối (có thể đã cũ) → cho phép quá khứ, vẫn chặn tương lai
+      const fresh = accept(m, { allowPast: kind === 'reply' })
       if (!fresh && !(kind === 'reply' && isCurrent(m))) return
       const wasJoined = live.current.joined
       setJoined(true)
@@ -133,6 +136,7 @@ export function useRoomSession(room: RoomDetail, me: RoomMe, onMessage: (m: Room
         pendingRef.current = m
         setPlayback({ movie: m.movie ?? cur.movie, episode: m.episode })
       } else {
+        pendingRef.current = null
         applyPosition(m)
       }
 
@@ -164,10 +168,11 @@ export function useRoomSession(room: RoomDetail, me: RoomMe, onMessage: (m: Room
         isPlaying,
         episode: next.episode,
         movie: next.movie,
-        sentAt: serverNow(),
+        sentAt: nextSentAt(serverNow(), lastSent.current),
         by: me.userId
       }
       markSent(m)
+      lastSent.current = m
       sendControl(m)
       setJoined(true)
       return m
@@ -238,9 +243,12 @@ export function useRoomSession(room: RoomDetail, me: RoomMe, onMessage: (m: Room
     applyPosition(pendingRef.current, player)
     pendingRef.current = null
   }, [player, applyPosition])
+  // Tập / phim mới là nguồn nhúng → không có player để áp, bỏ lệnh chờ (tránh áp nhầm về sau)
   useEffect(() => {
-    if (!isSynced) setPlayer(null)
-  }, [isSynced])
+    if (isSynced) return
+    setPlayer(null)
+    if (resolved) pendingRef.current = null
+  }, [isSynced, resolved])
 
   // Vừa mở phim từ trang chi tiết ("Mở trong phòng") → báo cả phòng đổi phim, khi kênh đã sẵn sàng
   const announcedRef = useRef(false)

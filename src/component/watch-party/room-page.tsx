@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
@@ -98,6 +98,13 @@ function RoomView({ room, me }: { room: RoomDetail; me: RoomMe }) {
     [addMessages, queryClient, room.id]
   )
   const s = useRoomSession(room, me, onMessage)
+  const status = s.channel.status
+  const { catchUp } = chat
+  const prevStatus = useRef(status)
+  useEffect(() => {
+    if (prevStatus.current === 'reconnecting' && status === 'live') void catchUp()
+    prevStatus.current = status
+  }, [status, catchUp])
   const isMobile = useIsMobile()
   const [searchOpen, setSearchOpen] = useState(false)
   const [picking, setPicking] = useState<string | null>(null)

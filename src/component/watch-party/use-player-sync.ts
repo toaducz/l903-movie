@@ -3,8 +3,12 @@
 import { useCallback, useEffect, useRef } from 'react'
 import type Player from 'video.js/dist/types/player'
 import {
+  canReplyState,
   createEchoGuard,
   isNewer,
+  isPlausibleSentAt,
+  nextSentAt,
+  shouldApplyQueued,
   shouldSeek,
   targetPosition,
   type ControlMessage,
@@ -23,6 +27,8 @@ type Options = {
   send(m: ControlMessage): void
   /** Trình duyệt chặn tự phát → phòng hiện nút "Bấm để vào cùng" */
   onAutoplayBlocked?: () => void
+  /** đang hiện nút "Bấm để vào cùng" → trạng thái máy mình chưa đáng tin để trả lời người khác */
+  autoplayBlocked?: boolean
 }
 
 // Kéo thanh tua bắn nhiều seeking/seeked liên tiếp → chỉ gửi 1 lệnh khi đã dừng tay
@@ -32,6 +38,8 @@ export function usePlayerSync(opts: Options) {
   const { player } = opts
   const guardRef = useRef(createEchoGuard())
   const lastRef = useRef<ControlMessage | null>(null)
+  const userSeekRef = useRef(false) // người dùng vừa tua, đợi 'seeked' ổn định để gửi
+  const queuedRef = useRef<{ player: Player; handler: () => void } | null>(null)
   const optsRef = useRef(opts)
   useEffect(() => {
     optsRef.current = opts
@@ -45,7 +53,7 @@ export function usePlayerSync(opts: Options) {
       isPlaying: !p.paused(),
       episode,
       movie,
-      sentAt: serverNow(),
+      sentAt: nextSentAt(serverNow(), lastRef.current),
       by: myId
     }
   }, [])
@@ -54,7 +62,6 @@ export function usePlayerSync(opts: Options) {
   useEffect(() => {
     if (!player) return
     const guard = guardRef.current
-    let userSeekPending = false
     let seekTimer: ReturnType<typeof setTimeout> | undefined
 
     const emit = (type: ControlType) => {
@@ -72,13 +79,13 @@ export function usePlayerSync(opts: Options) {
     }
     // 'seeking' bắn ngay khi currentTime đổi → so với cờ suppress đáng tin hơn 'seeked' (có thể trễ do tải)
     const onSeeking = () => {
-      if (!guard.isSuppressed('seek')) userSeekPending = true
+      if (!guard.isSuppressed('seek')) userSeekRef.current = true
     }
     const onSeeked = () => {
       clearTimeout(seekTimer)
       seekTimer = setTimeout(() => {
-        if (!userSeekPending || player.isDisposed()) return
-        userSeekPending = false
+        if (!userSeekRef.current || player.isDisposed()) return
+        userSeekRef.current = false
         emit('seek')
       }, SEEK_SETTLE_MS)
     }
@@ -102,6 +109,7 @@ export function usePlayerSync(opts: Options) {
     const duration = p.duration()
     const target = targetPosition(m, optsRef.current.serverNow(), Number.isFinite(duration) ? (duration ?? null) : null)
     if (shouldSeek(p.currentTime() ?? 0, target)) {
+      userSeekRef.current = false // lệnh từ xa thắng thao tác tua đang chờ gửi
       guard.suppress('seek')
       p.currentTime(target)
     }
@@ -115,8 +123,9 @@ export function usePlayerSync(opts: Options) {
     }
   }, [])
 
-  /** Last-write-wins: nhận lệnh nếu mới hơn lệnh cuối đã áp / đã gửi */
-  const accept = useCallback((m: ControlMessage): boolean => {
+  /** Last-write-wins: nhận lệnh nếu mới hơn lệnh cuối đã áp / đã gửi; sentAt lệch quá ±30s thì bỏ */
+  const accept = useCallback((m: ControlMessage, opts: { allowPast?: boolean } = {}): boolean => {
+    if (!isPlausibleSentAt(m.sentAt, optsRef.current.serverNow(), opts)) return false
     if (!isNewer(m, lastRef.current)) return false
     lastRef.current = m
     return true
@@ -127,8 +136,17 @@ export function usePlayerSync(opts: Options) {
     (m: ControlMessage, player?: Player | null) => {
       const p = player ?? optsRef.current.player
       if (!p || p.isDisposed()) return
-      if (p.readyState() < 1) p.one('loadedmetadata', () => applyNow(p, m))
-      else applyNow(p, m)
+      // Chỉ giữ 1 lệnh chờ loadedmetadata; lúc áp kiểm lại xem còn là lệnh mới nhất không
+      const queued = queuedRef.current
+      if (queued && !queued.player.isDisposed()) queued.player.off('loadedmetadata', queued.handler)
+      queuedRef.current = null
+      if (p.readyState() >= 1) return applyNow(p, m)
+      const handler = () => {
+        queuedRef.current = null
+        if (!p.isDisposed() && shouldApplyQueued(m, lastRef.current)) applyNow(p, m)
+      }
+      queuedRef.current = { player: p, handler }
+      p.one('loadedmetadata', handler)
     },
     [applyNow]
   )
@@ -157,6 +175,13 @@ export function usePlayerSync(opts: Options) {
     const p = optsRef.current.player
     const last = lastRef.current
     if (!p || p.isDisposed() || !last) return null
+    const ready = canReplyState({
+      hasMetadata: p.readyState() >= 1,
+      localPlaying: !p.paused(),
+      lastIsPlaying: last.isPlaying,
+      autoplayBlocked: !!optsRef.current.autoplayBlocked
+    })
+    if (!ready) return null
     const now = build(p, p.paused() ? 'pause' : 'play')
     const elapsed = now.isPlaying ? (now.sentAt - last.sentAt) / 1000 : 0
     return { ...now, positionSec: Math.max(0, now.positionSec - elapsed), sentAt: last.sentAt, by: last.by }

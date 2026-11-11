@@ -84,7 +84,7 @@ export const logRoomEvent = async (id: string, type: LoggableRoomEventType, valu
 }
 
 export const fetchRealtimeToken = () =>
-  callRoomApi<{ token: string; expiresAt: number }>('/api/auth/realtime-token', { cache: 'no-store' })
+  callRoomApi<{ token: string; expiresAt: number | null }>('/api/auth/realtime-token', { cache: 'no-store' })
 
 export const fetchServerTime = async () => (await callRoomApi<{ now: number }>('/api/time', { cache: 'no-store' })).now
 
