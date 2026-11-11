@@ -118,5 +118,10 @@ describe('oldestCreatedAt', () => {
     const b = { ...text('u1', '2026-11-11T11:00:00'), createdAt: '2026-11-11T10:00:00.123456+00:00' }
     expect(oldestCreatedAt([a, b])).toBe('2026-11-11T10:00:00.123456+00:00')
     expect(oldestCreatedAt([])).toBeNull()
+    // tin lạc quan 'Z' vs DB '+00:00': .500Z mới hơn .4+00:00
+    const c = { ...a, createdAt: '2026-11-11T10:00:00.500Z' }
+    const d = { ...a, createdAt: '2026-11-11T10:00:00.4+00:00' }
+    expect(oldestCreatedAt([c, d])).toBe(d.createdAt)
+    expect(oldestCreatedAt([d, c])).toBe(d.createdAt)
   })
 })
