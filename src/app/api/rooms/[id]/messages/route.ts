@@ -1,7 +1,7 @@
 // api/rooms/[id]/messages/route.ts — lịch sử chat (phân trang) + gửi tin
 import { NextRequest, NextResponse } from 'next/server'
 import { getUserSupabase } from '@/lib/supabase-user-client'
-import { parseMessageText } from '@/lib/watch-room/validation'
+import { isIsoTimestamp, parseMessageText } from '@/lib/watch-room/validation'
 import { MESSAGE_COLUMNS, mapMessageRow } from '@/lib/watch-room/room-mapper'
 import {
   badRequest,
@@ -25,7 +25,7 @@ export async function GET(req: NextRequest, { params }: Ctx) {
   if (!roomId) return badRequest('id phòng không hợp lệ')
 
   const before = new URL(req.url).searchParams.get('before')
-  if (before !== null && Number.isNaN(Date.parse(before))) return badRequest('before không hợp lệ')
+  if (before !== null && !isIsoTimestamp(before)) return badRequest('before không hợp lệ')
 
   let query = auth.client
     .from('watch_room_messages')
@@ -33,7 +33,7 @@ export async function GET(req: NextRequest, { params }: Ctx) {
     .eq('room_id', roomId)
     .order('created_at', { ascending: false })
     .limit(PAGE_SIZE + 1)
-  if (before) query = query.lt('created_at', new Date(before).toISOString())
+  if (before) query = query.lt('created_at', before)
 
   // Kiểm thành viên song song: RLS trả rỗng cho người ngoài, nhưng cần 404 rõ ràng
   const [roomRes, listRes] = await Promise.all([
@@ -71,6 +71,8 @@ export async function POST(req: NextRequest, { params }: Ctx) {
     .single()
   // RLS chặn (không phải thành viên) → 42501
   if (isForbiddenError(error)) return notFound()
+  // 54000 = trigger chống spam (≥ 10 tin / 10 giây)
+  if (error?.code === '54000') return NextResponse.json({ error: 'Gửi chậm lại chút nha' }, { status: 429 })
   if (error) return serverError('send message', error)
 
   const message = mapMessageRow(data)

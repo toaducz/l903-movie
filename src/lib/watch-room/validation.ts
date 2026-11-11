@@ -16,6 +16,8 @@ const LOGGABLE_EVENTS: readonly LoggableRoomEventType[] = ['pause', 'play', 'see
 
 function parseTrimmed(input: unknown, max: number, label: string): ParseResult<string> {
   if (typeof input !== 'string') return { ok: false, error: `${label} không hợp lệ` }
+  // chuỗi thô cũng giới hạn (DB kiểm cả độ dài trước trim)
+  if (input.length > max) return { ok: false, error: `${label} tối đa ${max} ký tự` }
   const value = input.trim()
   if (!value) return { ok: false, error: `${label} không được để trống` }
   if (value.length > max) return { ok: false, error: `${label} tối đa ${max} ký tự` }
@@ -29,6 +31,10 @@ export const parseMessageText = (input: unknown) => parseTrimmed(input, MESSAGE_
 export const isValidInviteToken = (token: string): boolean => INVITE_TOKEN_RE.test(token)
 
 export const isUuid = (id: string): boolean => UUID_RE.test(id)
+
+// Timestamp ISO như PostgREST / Realtime trả (tới micro-giây, múi giờ tuỳ chọn) — dùng nguyên chuỗi cho phân trang, không qua Date (mất micro-giây)
+const ISO_TS_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,6})?(Z|[+-]\d{2}:?\d{2})?$/
+export const isIsoTimestamp = (value: string): boolean => ISO_TS_RE.test(value)
 
 export const episodeKeyOf = (ep: { slug: string; name: string }): string => ep.slug || ep.name
 

@@ -7,7 +7,12 @@ export const unauthorized = () => NextResponse.json({ error: 'Bạn cần đăng
 export const badRequest = (error: string) => NextResponse.json({ error }, { status: 400 })
 export const notFound = (error = 'Không tìm thấy phòng') => NextResponse.json({ error }, { status: 404 })
 
+// JWT hết hạn giữa request (PostgREST PGRST301/PGRST303, Postgres 28000) → 401 thay vì 500
+const AUTH_ERROR_CODES = new Set(['PGRST301', 'PGRST303', '28000'])
+
 export function serverError(context: string, error: unknown) {
+  const code = (error as { code?: unknown } | null)?.code
+  if (typeof code === 'string' && AUTH_ERROR_CODES.has(code)) return unauthorized()
   console.error(`[api/rooms] ${context}:`, error)
   return NextResponse.json({ error: 'Có lỗi xảy ra, thử lại sau' }, { status: 500 })
 }

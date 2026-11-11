@@ -41,7 +41,8 @@ create table if not exists public.watch_room_messages (
   event      jsonb,
   created_at timestamptz not null default now(),
   check (
-    (kind = 'text' and event is null and text is not null and char_length(btrim(text)) between 1 and 500)
+    (kind = 'text' and event is null and text is not null
+     and char_length(text) <= 500 and char_length(btrim(text)) between 1 and 500)
     or (kind = 'event' and text is null and jsonb_typeof(event) = 'object')
   )
 );
@@ -97,6 +98,28 @@ begin
   return new;
 end;
 $$;
+
+-- Chống spam chat (kể cả gọi PostgREST trực tiếp): ≥ 10 tin text / 10 giây / người / phòng → từ chối
+create or replace function public.watch_room_messages_rate_limit()
+returns trigger
+language plpgsql security definer set search_path = public
+as $$
+begin
+  if new.kind = 'text' and (
+    select count(*) from public.watch_room_messages
+    where room_id = new.room_id and user_id = new.user_id and kind = 'text'
+      and created_at > now() - interval '10 seconds'
+  ) >= 10 then
+    raise exception 'rate_limited' using errcode = '54000';
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists watch_room_messages_rate_limit on public.watch_room_messages;
+create trigger watch_room_messages_rate_limit
+  before insert on public.watch_room_messages
+  for each row execute function public.watch_room_messages_rate_limit();
 
 drop trigger if exists watch_room_messages_touch_room on public.watch_room_messages;
 create trigger watch_room_messages_touch_room
@@ -267,6 +290,7 @@ grant execute on function public.log_room_event(uuid, text, text) to authenticat
 
 -- Hàm nội bộ: không ai gọi trực tiếp; hàm dùng trong policy chỉ cho authenticated
 revoke all on function public.watch_room_messages_touch_room() from public, anon, authenticated;
+revoke all on function public.watch_room_messages_rate_limit() from public, anon, authenticated;
 revoke all on function public.new_invite_token() from public, anon, authenticated;
 revoke all on function public.clean_display_name(text) from public, anon, authenticated;
 revoke all on function public.is_room_member(uuid) from public, anon;
@@ -290,7 +314,9 @@ grant insert (room_id, user_id, kind, text) on public.watch_room_messages to aut
 
 drop policy if exists "watch_rooms_select_member" on public.watch_rooms;
 create policy "watch_rooms_select_member" on public.watch_rooms
-  for select to authenticated using (public.is_room_member(id));
+  -- semi-join qua watch_room_members_user_idx thay vì gọi hàm cho từng phòng (planner đẩy được xuống index)
+  for select to authenticated
+  using (id in (select room_id from public.watch_room_members where user_id = (select auth.uid())));
 
 drop policy if exists "watch_room_members_select_member" on public.watch_room_members;
 create policy "watch_room_members_select_member" on public.watch_room_members

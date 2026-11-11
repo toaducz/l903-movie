@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   episodeKeyOf,
+  isIsoTimestamp,
   isLoggableEvent,
   isUuid,
   isValidInviteToken,
@@ -27,6 +28,9 @@ describe('parseMessageText', () => {
     expect(parseMessageText('a'.repeat(500)).ok).toBe(true)
     expect(parseMessageText('a'.repeat(501)).ok).toBe(false)
   })
+  it('từ chối chuỗi thô > 500 ký tự dù sau trim còn ngắn', () => {
+    expect(parseMessageText(' '.repeat(600) + 'hi').ok).toBe(false)
+  })
   it('từ chối chỉ khoảng trắng / không phải chuỗi', () => {
     expect(parseMessageText('  \n ').ok).toBe(false)
     expect(parseMessageText(42).ok).toBe(false)
@@ -43,6 +47,15 @@ describe('isValidInviteToken', () => {
     expect(isValidInviteToken('Ab-_'.repeat(4))).toBe(true)
     expect(isValidInviteToken('../../etc/passwd0000')).toBe(false)
     expect(isValidInviteToken('a'.repeat(65))).toBe(false)
+  })
+})
+
+describe('isIsoTimestamp', () => {
+  it('nhận timestamp ISO (tới micro-giây), từ chối chuỗi khác', () => {
+    expect(isIsoTimestamp('2026-11-11T10:00:00.123456+00:00')).toBe(true)
+    expect(isIsoTimestamp('2026-11-11T10:00:00Z')).toBe(true)
+    expect(isIsoTimestamp('2026-11-11')).toBe(false)
+    expect(isIsoTimestamp("2026-11-11T10:00:00Z' or 1=1")).toBe(false)
   })
 })
 
