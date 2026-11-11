@@ -23,7 +23,7 @@ type LoggedEvent = { type: LoggableRoomEventType; value?: string }
 
 const SNAPSHOT_MS = 10_000
 const PRESENCE_MS = 5_000
-const EVENT_LOG_MS = 2_000
+const EVENT_LOG_MS = 2_500 // > 2s chống spam phía SQL để sự kiện cuối không bị bỏ
 const SETTLE_MS = 1_200
 const REACTION_THROTTLE_MS = 250
 

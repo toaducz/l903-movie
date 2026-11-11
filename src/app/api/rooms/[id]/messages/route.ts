@@ -65,7 +65,8 @@ export async function POST(req: NextRequest, { params }: Ctx) {
 
   const { data, error } = await auth.client
     .from('watch_room_messages')
-    .insert({ room_id: roomId, user_id: auth.userId, kind: 'text', text: text.value })
+    // user_id để DB tự điền auth.uid() (chỉ được grant insert các cột cần thiết)
+    .insert({ room_id: roomId, kind: 'text', text: text.value })
     .select(MESSAGE_COLUMNS)
     .single()
   // RLS chặn (không phải thành viên) → 42501

@@ -108,7 +108,7 @@ export function useRoomChannel(
       if (disposed) return
 
       const { userId } = meRef.current
-      const channel = supabase.channel(`room:${roomId}`, {
+      const channel = supabase.channel(`room:${roomId.toLowerCase()}`, {
         config: { private: true, broadcast: { self: false }, presence: { key: userId } }
       })
       channelRef.current = channel

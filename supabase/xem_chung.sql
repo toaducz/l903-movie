@@ -47,6 +47,8 @@ create table if not exists public.watch_room_messages (
 );
 create index if not exists watch_room_messages_room_created_idx
   on public.watch_room_messages (room_id, created_at desc);
+create index if not exists watch_room_messages_user_idx on public.watch_room_messages (user_id);
+create index if not exists watch_rooms_owner_idx on public.watch_rooms (owner_id) where owner_id is not null;
 
 -- ───────────────────────── Hàm phụ trợ ─────────────────────────
 
@@ -81,7 +83,8 @@ create or replace function public.clean_display_name(p_name text)
 returns text
 language sql immutable
 as $$
-  select left(coalesce(nullif(btrim(p_name), ''), 'ẩn danh'), 40);
+  -- bỏ ký tự điều khiển + ký tự đảo chiều chữ (U+202A–U+202E) trước khi trim
+  select left(coalesce(nullif(btrim(regexp_replace(p_name, '[[:cntrl:]\u202a-\u202e]', '', 'g')), ''), 'ẩn danh'), 40);
 $$;
 
 -- Tin / sự kiện mới → cập nhật last_activity_at của phòng
@@ -113,6 +116,9 @@ declare
 begin
   if v_uid is null then raise exception 'not_authenticated' using errcode = '28000'; end if;
   if char_length(v_name) not between 1 and 40 then raise exception 'invalid_name' using errcode = '22023'; end if;
+  if (select count(*) from public.watch_rooms where owner_id = v_uid) >= 20 then
+    raise exception 'too_many_rooms' using errcode = '54000';
+  end if;
 
   insert into public.watch_rooms (name, owner_id, invite_token)
   values (v_name, v_uid, public.new_invite_token())
@@ -203,8 +209,11 @@ language plpgsql security definer set search_path = public
 as $$
 begin
   if not public.is_room_member(p_room_id) then raise exception 'forbidden' using errcode = '42501'; end if;
-  if p_movie is not null and jsonb_typeof(p_movie) <> 'object' then
+  if p_movie is not null and (jsonb_typeof(p_movie) <> 'object' or pg_column_size(p_movie) > 4096) then
     raise exception 'invalid_movie' using errcode = '22023';
+  end if;
+  if p_position_sec = 'NaN'::numeric or p_position_sec > 1000000 then
+    raise exception 'invalid_position' using errcode = '22023';
   end if;
 
   update public.watch_rooms set
@@ -227,8 +236,16 @@ language plpgsql security definer set search_path = public
 as $$
 begin
   if not public.is_room_member(p_room_id) then raise exception 'forbidden' using errcode = '42501'; end if;
-  if p_type not in ('pause', 'play', 'seek', 'episode', 'movie') then
+  if p_type is null or p_type not in ('pause', 'play', 'seek', 'episode', 'movie') then
     raise exception 'invalid_event' using errcode = '22023';
+  end if;
+  -- chống spam: cùng người + phòng đã ghi trong 2 giây gần nhất → bỏ qua lặng lẽ
+  if exists (
+    select 1 from public.watch_room_messages
+    where room_id = p_room_id and user_id = auth.uid() and kind = 'event'
+      and created_at > now() - interval '2 seconds'
+  ) then
+    return;
   end if;
 
   insert into public.watch_room_messages (room_id, user_id, kind, event)
@@ -248,19 +265,28 @@ grant execute on function public.room_invite_preview(text) to authenticated;
 grant execute on function public.save_room_state(uuid, jsonb, text, text, text, numeric, boolean) to authenticated;
 grant execute on function public.log_room_event(uuid, text, text) to authenticated;
 
+-- Hàm nội bộ: không ai gọi trực tiếp; hàm dùng trong policy chỉ cho authenticated
+revoke all on function public.watch_room_messages_touch_room() from public, anon, authenticated;
+revoke all on function public.new_invite_token() from public, anon, authenticated;
+revoke all on function public.clean_display_name(text) from public, anon, authenticated;
+revoke all on function public.is_room_member(uuid) from public, anon;
+revoke all on function public.room_id_from_topic(text) from public, anon;
+grant execute on function public.is_room_member(uuid) to authenticated;
+grant execute on function public.room_id_from_topic(text) to authenticated;
+
 -- ───────────────────────── RLS ─────────────────────────
 
 alter table public.watch_rooms enable row level security;
 alter table public.watch_room_members enable row level security;
 alter table public.watch_room_messages enable row level security;
 
--- Khách (anon) không đụng được gì
-revoke all on public.watch_rooms, public.watch_room_members, public.watch_room_messages from anon;
--- Phòng / thành viên chỉ đổi qua RPC; thành viên chỉ được sửa cột last_read_at
-revoke insert, update, delete on public.watch_rooms from authenticated;
-revoke insert, update, delete on public.watch_room_members from authenticated;
+-- Khách (anon) không đụng được gì; authenticated chỉ có đúng quyền cần dùng
+-- (phòng / thành viên đổi qua RPC; thành viên chỉ sửa last_read_at; tin chỉ insert các cột text)
+revoke all on public.watch_rooms, public.watch_room_members, public.watch_room_messages from anon, authenticated;
+grant select on public.watch_rooms, public.watch_room_members to authenticated;
 grant update (last_read_at) on public.watch_room_members to authenticated;
-revoke update, delete on public.watch_room_messages from authenticated;
+grant select on public.watch_room_messages to authenticated;
+grant insert (room_id, user_id, kind, text) on public.watch_room_messages to authenticated;
 
 drop policy if exists "watch_rooms_select_member" on public.watch_rooms;
 create policy "watch_rooms_select_member" on public.watch_rooms

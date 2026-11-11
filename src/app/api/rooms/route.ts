@@ -36,11 +36,16 @@ export async function POST(req: NextRequest) {
   const name = parseRoomName(body?.name)
   if (!name.ok) return badRequest(name.error)
 
-  const { data, error } = await auth.client
-    .rpc('create_room', { p_name: name.value, p_display_name: displayNameFromEmail(auth.email) })
-    .single()
+  const { data, error } = await auth.client.rpc('create_room', {
+    p_name: name.value,
+    p_display_name: displayNameFromEmail(auth.email)
+  })
+  // 54000 = đã sở hữu quá nhiều phòng (giới hạn trong SQL)
+  if (error?.code === '54000') return badRequest('Bạn đã có quá nhiều phòng')
   if (error) return serverError('create', error)
 
-  const row = data as { room_id: string; token: string }
+  // RPC trả về bảng → supabase-js trả mảng [{ room_id, token }]
+  const row = (Array.isArray(data) ? data[0] : data) as { room_id?: unknown; token?: unknown } | null
+  if (typeof row?.room_id !== 'string' || typeof row.token !== 'string') return serverError('create result', data)
   return NextResponse.json({ data: { id: row.room_id, inviteToken: row.token } })
 }
