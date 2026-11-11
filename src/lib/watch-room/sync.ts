@@ -29,7 +29,10 @@ export function targetPosition(msg: ControlMessage, serverNow: number, duration:
 export const shouldSeek = (current: number, target: number): boolean => Math.abs(current - target) >= SEEK_TOLERANCE_SEC
 
 /** Last-write-wins: sentAt lớn hơn thắng; trùng ms thì so `by` để mọi máy chọn cùng một lệnh */
-export function isNewer(msg: Pick<ControlMessage, 'sentAt' | 'by'>, last: Pick<ControlMessage, 'sentAt' | 'by'> | null) {
+export function isNewer(
+  msg: Pick<ControlMessage, 'sentAt' | 'by'>,
+  last: Pick<ControlMessage, 'sentAt' | 'by'> | null
+) {
   if (!last) return true
   if (msg.sentAt !== last.sentAt) return msg.sentAt > last.sentAt
   return msg.by > last.by
