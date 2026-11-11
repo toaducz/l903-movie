@@ -15,6 +15,7 @@ import Image from 'next/image'
 import thumbnail from '@/assets/gumaKe.png'
 import FavoriteButton from '@/component/interactive/favorite-button'
 import WatchedButton from '@/component/watched/watched-button'
+import WatchPartyButton from '@/component/watch-party/watch-party-button'
 import WatchedIcon from '@/component/watched/watched-icon'
 import { saveViewHistory } from '@/utils/local-storage'
 import VideoPlayer from '@/component/player/custom-player'
@@ -351,6 +352,7 @@ export default function WatchPage() {
               />
               <WatchedButton detail={data} source={source} className='w-full !px-2.5 sm:w-auto sm:!px-[22px]' />
             </div>
+            <WatchPartyButton detail={data} source={source} episodeLink={selectedEpisode} className='w-full sm:w-auto' />
           </div>
 
           <div className='grid grid-cols-1 md:grid-cols-[320px_1fr] gap-10 items-start'>
