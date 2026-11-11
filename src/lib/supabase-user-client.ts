@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server'
 import { createClient, SupabaseClient } from '@supabase/supabase-js'
 
-export type UserSupabase = { client: SupabaseClient; userId: string }
+export type UserSupabase = { client: SupabaseClient; userId: string; email: string | null }
 
 // Tạo Supabase client RIÊNG cho từng request, mang access token của chính người dùng.
 // Khác với `supabaseClient` dùng chung + setSession (có thể lẫn phiên giữa các request đồng thời),
@@ -17,5 +17,5 @@ export async function getUserSupabase(req: NextRequest): Promise<UserSupabase | 
 
   const { data, error } = await client.auth.getUser(accessToken)
   if (error || !data.user) return null
-  return { client, userId: data.user.id }
+  return { client, userId: data.user.id, email: data.user.email ?? null }
 }
