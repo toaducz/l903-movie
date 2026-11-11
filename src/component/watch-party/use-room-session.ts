@@ -32,7 +32,7 @@ const noop = () => undefined
 export function useRoomSession(room: RoomDetail, me: RoomMe, onMessage: (m: RoomMessage) => void) {
   const { serverNow } = useServerClock()
   const feedback = useRoomFeedback()
-  const { addFlying } = feedback
+  const { addFlying, showToast } = feedback
   const [playback, setPlayback] = useState<Playback>({ movie: room.state.movie, episode: room.state.episode })
   const [player, setPlayer] = useState<Player | null>(null)
   const [joined, setJoined] = useState(false) // đã vào nhịp phát chung (đã gửi / nhận lệnh)
@@ -66,8 +66,7 @@ export function useRoomSession(room: RoomDetail, me: RoomMe, onMessage: (m: Room
   })
 
   const logger = useMemo(
-    () =>
-      createEventThrottle<LoggedEvent>(e => void logRoomEvent(room.id, e.type, e.value).catch(noop), EVENT_LOG_MS),
+    () => createEventThrottle<LoggedEvent>(e => void logRoomEvent(room.id, e.type, e.value).catch(noop), EVENT_LOG_MS),
     [room.id]
   )
   useEffect(() => () => logger.flush(), [logger])
@@ -84,48 +83,10 @@ export function useRoomSession(room: RoomDetail, me: RoomMe, onMessage: (m: Room
   }, [])
   const saveSnapshot = useCallback(() => void saveRoomState(room.id, snapshot()).catch(noop), [room.id, snapshot])
 
-  // ── Lệnh đến từ người khác (control) hoặc câu trả lời trạng thái (state_reply) ──
-  const handleIncoming = useCallback(
-    (m: ControlMessage, kind: 'control' | 'reply') => {
-      const fresh = sync.accept(m)
-      if (!fresh && !(kind === 'reply' && sync.isCurrent(m))) return
-      const wasJoined = live.current.joined
-      setJoined(true)
-      setAutoplayBlocked(false)
-
-      const cur = live.current
-      const movieChanged = !!m.movie && !sameMovie(m.movie, cur.movie)
-      if (movieChanged || (m.episode && !sameEpisode(m.episode, cur.episode))) {
-        pendingRef.current = m
-        setPlayback({ movie: m.movie ?? cur.movie, episode: m.episode })
-      } else {
-        sync.applyPosition(m)
-      }
-
-      if (!fresh) return
-      const name = nameOf(m.by)
-      const at = formatPosition(m.positionSec)
-      if (kind === 'reply') {
-        if (!wasJoined) feedback.showToast({ userId: m.by, name: `Đã vào cùng ${name}`, text: 'tại', strong: at, tone: 'cyan' })
-        return
-      }
-      const toasts: Record<ControlType, Omit<Parameters<typeof feedback.showToast>[0], 'userId' | 'name'>> = {
-        play: { text: 'tiếp tục phát', tone: 'cyan' },
-        pause: { text: 'đã tạm dừng ·', strong: at, tone: 'yel' },
-        seek: { text: 'tua tới', strong: at, tone: 'cyan' },
-        episode: { text: 'đổi sang', strong: m.episode?.episodeName, tone: 'cyan' },
-        movie: { text: 'đổi phim:', strong: m.movie?.title, tone: 'cyan' }
-      }
-      feedback.showToast({ userId: m.by, name, ...toasts[m.type] })
-    },
-    // sync / feedback ổn định (callback memo bên trong)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [nameOf]
-  )
-
   const channel = useRoomChannel(room.id, me, {
     onControl: m => handleIncoming(m, 'control'),
     onStateReply: m => handleIncoming(m, 'reply'),
+    // handleIncoming / sync khai báo bên dưới — chỉ được gọi khi có sự kiện, lúc đó đã sẵn sàng
     onStateRequest: () => {
       const c = sync.currentControl()
       if (c) channel.replyState(c)
@@ -155,7 +116,44 @@ export function useRoomSession(room: RoomDetail, me: RoomMe, onMessage: (m: Room
     send: sendFromPlayer,
     onAutoplayBlocked: () => setAutoplayBlocked(true)
   })
-  const { markSent, applyPosition, guard } = sync
+  const { accept, isCurrent, markSent, applyPosition, guard } = sync
+
+  // ── Lệnh đến từ người khác (control) hoặc câu trả lời trạng thái (state_reply) ──
+  const handleIncoming = useCallback(
+    (m: ControlMessage, kind: 'control' | 'reply') => {
+      const fresh = accept(m)
+      if (!fresh && !(kind === 'reply' && isCurrent(m))) return
+      const wasJoined = live.current.joined
+      setJoined(true)
+      setAutoplayBlocked(false)
+
+      const cur = live.current
+      const movieChanged = !!m.movie && !sameMovie(m.movie, cur.movie)
+      if (movieChanged || (m.episode && !sameEpisode(m.episode, cur.episode))) {
+        pendingRef.current = m
+        setPlayback({ movie: m.movie ?? cur.movie, episode: m.episode })
+      } else {
+        applyPosition(m)
+      }
+
+      if (!fresh) return
+      const name = nameOf(m.by)
+      const at = formatPosition(m.positionSec)
+      if (kind === 'reply') {
+        if (!wasJoined) showToast({ userId: m.by, name: `Đã vào cùng ${name}`, text: 'tại', strong: at, tone: 'cyan' })
+        return
+      }
+      const toasts: Record<ControlType, Omit<Parameters<typeof showToast>[0], 'userId' | 'name'>> = {
+        play: { text: 'tiếp tục phát', tone: 'cyan' },
+        pause: { text: 'đã tạm dừng ·', strong: at, tone: 'yel' },
+        seek: { text: 'tua tới', strong: at, tone: 'cyan' },
+        episode: { text: 'đổi sang', strong: m.episode?.episodeName, tone: 'cyan' },
+        movie: { text: 'đổi phim:', strong: m.movie?.title, tone: 'cyan' }
+      }
+      showToast({ userId: m.by, name, ...toasts[m.type] })
+    },
+    [accept, isCurrent, applyPosition, nameOf, showToast]
+  )
 
   /** Gửi một lệnh do mình chủ động (tiếp tục, đổi tập, đổi phim) — áp cả cho máy mình */
   const sendOwn = useCallback(
