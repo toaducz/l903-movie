@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { verifySupabaseJwt } from '@/lib/verify-supabase-jwt'
+import { safeNextPath } from '@/lib/safe-next-path'
 
 export const config = {
   matcher: ['/((?!api|_next/static|_next/image|riv|favicon.ico).*)']
@@ -68,11 +69,15 @@ export async function middleware(req: NextRequest) {
 
   // Trường hợp 1: Chưa đăng nhập hợp lệ (fake token hoặc không có) mà cố vào các trang nội dung
   if (!isAuthenticated && !isLoginPage && !isHomePage) {
-    res = NextResponse.redirect(new URL('/home', req.url))
+    // Link mời "Xem chung" → đăng nhập xong quay lại đúng link; trang khác giữ hành vi cũ
+    const isInvite = req.nextUrl.pathname.startsWith('/moi/')
+    const target = new URL(isInvite ? '/login' : '/home', req.url)
+    if (isInvite) target.searchParams.set('next', req.nextUrl.pathname)
+    res = NextResponse.redirect(target)
   }
   // Trường hợp 2: Đã đăng nhập mà cố vào lại trang login
   else if (isAuthenticated && isLoginPage) {
-    res = NextResponse.redirect(new URL('/', req.url))
+    res = NextResponse.redirect(new URL(safeNextPath(req.nextUrl.searchParams.get('next')) ?? '/', req.url))
   }
 
   // Ghi lại token mới nếu vừa refresh thành công trong middleware

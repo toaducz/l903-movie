@@ -1,5 +1,12 @@
 import { queryOptions } from '@tanstack/react-query'
-import type { LoggableRoomEventType, RoomEpisode, RoomMovie, RoomSummary } from '@/types/watch-room'
+import type {
+  InvitePreview,
+  LoggableRoomEventType,
+  RoomEpisode,
+  RoomMessage,
+  RoomMovie,
+  RoomSummary
+} from '@/types/watch-room'
 
 // Client cho "Xem chung" (gọi /api/rooms/**, /api/invites/**, /api/auth/realtime-token, /api/time)
 
@@ -80,3 +87,25 @@ export const fetchRealtimeToken = () =>
   callRoomApi<{ token: string; expiresAt: number }>('/api/auth/realtime-token', { cache: 'no-store' })
 
 export const fetchServerTime = async () => (await callRoomApi<{ now: number }>('/api/time', { cache: 'no-store' })).now
+
+export type RoomMessagePage = { data: RoomMessage[]; hasMore: boolean }
+
+/** 50 tin, mới nhất trước; `before` = createdAt của tin cũ nhất đang có để tải thêm */
+export const getRoomMessages = (id: string, before?: string) =>
+  callRoomApi<RoomMessagePage>(
+    `/api/rooms/${encodeURIComponent(id)}/messages${before ? `?before=${encodeURIComponent(before)}` : ''}`
+  )
+
+export const sendRoomMessage = async (id: string, text: string) =>
+  (await callRoomApi<{ data: RoomMessage }>(`/api/rooms/${encodeURIComponent(id)}/messages`, post({ text }))).data
+
+export const getInvitePreview = (token: string) =>
+  queryOptions<InvitePreview>({
+    queryKey: [WATCH_ROOM_QUERY_KEY, 'invite', token],
+    queryFn: async () => (await callRoomApi<{ data: InvitePreview }>(`/api/invites/${encodeURIComponent(token)}`)).data,
+    retry: (count, err) => !(err instanceof RoomApiError && err.status < 500) && count < 2
+  })
+
+export const joinInvite = async (token: string) =>
+  (await callRoomApi<{ data: { roomId: string } }>(`/api/invites/${encodeURIComponent(token)}`, { method: 'POST' }))
+    .data
