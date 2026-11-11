@@ -168,10 +168,13 @@ export default function ChatList(props: Props) {
             {p.status === 'sending' ? (
               <span className='xc-mt'>đang gửi</span>
             ) : (
-              <button type='button' className='dx-b dx-b-txt !h-7 !px-1 !text-xs' onClick={() => onRetry(p.tempId)}>
-                <XcIcon name='warn' size={12} />
-                Gửi lại
-              </button>
+              <span className='flex items-center gap-1.5'>
+                {p.error && <span className='xc-mt'>{p.error}</span>}
+                <button type='button' className='dx-b dx-b-txt !h-7 !px-1 !text-xs' onClick={() => onRetry(p.tempId)}>
+                  <XcIcon name='warn' size={12} />
+                  Gửi lại
+                </button>
+              </span>
             )}
           </div>
         </div>

@@ -1,13 +1,14 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { getRoomMessages, sendRoomMessage } from '@/services/watch-room-service'
+import { getRoomMessages, roomErrorMessage, sendRoomMessage } from '@/services/watch-room-service'
+import { oldestCreatedAt } from '@/lib/watch-room/chat-format'
 import { parseMessageText } from '@/lib/watch-room/validation'
 import type { RoomMessage } from '@/types/watch-room'
 
 // Chat của phòng: lịch sử (50 tin/trang, cuộn lên tải thêm), tin mới realtime, gửi lạc quan + gửi lại khi lỗi
 
-export type PendingMessage = { tempId: number; text: string; status: 'sending' | 'error' }
+export type PendingMessage = { tempId: number; text: string; status: 'sending' | 'error'; error?: string }
 
 export function useRoomChat(roomId: string) {
   const [messages, setMessages] = useState<RoomMessage[]>([])
@@ -56,10 +57,7 @@ export function useRoomChat(roomId: string) {
 
   const loadOlder = useCallback(async () => {
     if (loadingOlder.current || !hasMore) return
-    const oldest = messages.reduce<string | null>(
-      (min, m) => (min === null || m.createdAt < min ? m.createdAt : min),
-      null
-    )
+    const oldest = oldestCreatedAt(messages)
     if (!oldest) return
     loadingOlder.current = true
     try {
@@ -80,8 +78,10 @@ export function useRoomChat(roomId: string) {
         const saved = await sendRoomMessage(roomId, text)
         addMessages([saved])
         setPending(list => list.filter(p => p.tempId !== tempId))
-      } catch {
-        setPending(list => list.map(p => (p.tempId === tempId ? { ...p, status: 'error' } : p)))
+      } catch (err) {
+        // 429 → "Gửi chậm lại chút nha"; còn lại là câu lỗi của API / mạng
+        const error = roomErrorMessage(err)
+        setPending(list => list.map(p => (p.tempId === tempId ? { ...p, status: 'error', error } : p)))
       }
     },
     [roomId, addMessages]

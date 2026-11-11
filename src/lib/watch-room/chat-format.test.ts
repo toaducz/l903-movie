@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import type { RoomMessage } from '@/types/watch-room'
-import { avatarTone, buildChatItems, displayNameFromEmail, formatPosition, linkify } from './chat-format'
+import {
+  avatarTone,
+  buildChatItems,
+  displayNameFromEmail,
+  formatPosition,
+  linkify,
+  oldestCreatedAt
+} from './chat-format'
 
 describe('displayNameFromEmail', () => {
   it('lấy phần trước @, cắt 16 ký tự', () => {
@@ -102,5 +109,14 @@ describe('buildChatItems', () => {
   it('ngày cũ hơn → dd/MM', () => {
     const items = buildChatItems([text('u1', '2026-11-01T09:00:00')], 'u1', NOW)
     expect(items[0]).toEqual({ kind: 'day', label: '01/11' })
+  })
+})
+
+describe('oldestCreatedAt', () => {
+  it('so theo thời gian thật, không theo chuỗi (Z vs +00:00), trả nguyên chuỗi gốc', () => {
+    const a = { ...text('u1', '2026-11-11T11:00:00'), createdAt: '2026-11-11T10:00:00.5Z' }
+    const b = { ...text('u1', '2026-11-11T11:00:00'), createdAt: '2026-11-11T10:00:00.123456+00:00' }
+    expect(oldestCreatedAt([a, b])).toBe('2026-11-11T10:00:00.123456+00:00')
+    expect(oldestCreatedAt([])).toBeNull()
   })
 })

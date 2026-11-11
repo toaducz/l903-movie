@@ -51,6 +51,17 @@ export function linkify(text: string): LinkPart[] {
   return parts
 }
 
+/** createdAt cũ nhất (so theo thời gian, vì 'Z' và '+00:00' so chuỗi sai thứ tự) — trả nguyên chuỗi gốc để phân trang */
+export function oldestCreatedAt(messages: RoomMessage[]): string | null {
+  let oldest: { iso: string; ms: number } | null = null
+  for (const m of messages) {
+    const ms = Date.parse(m.createdAt)
+    if (Number.isNaN(ms)) continue
+    if (!oldest || ms < oldest.ms) oldest = { iso: m.createdAt, ms }
+  }
+  return oldest?.iso ?? null
+}
+
 export type ChatItem =
   | { kind: 'day'; label: string }
   | { kind: 'event'; message: RoomMessage; count: number }
