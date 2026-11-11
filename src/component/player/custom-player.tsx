@@ -41,6 +41,10 @@ interface VideoPlayerProps {
   subtitles1?: SubtitleCue[]
   subtitles2?: SubtitleCue[]
   source?: string
+  /** Trong phòng "Xem chung": không tự seek tới tiến trình đã lưu, không tự play khi load (vẫn lưu tiến trình) */
+  disableProgressRestore?: boolean
+  /** Gọi NGAY TRƯỚC mỗi lần code tự đổi currentTime (nhảy quảng cáo, khôi phục tiến trình) — để phòng không phát lại */
+  onSeekProgrammatic?: (kind: 'seek') => void
 }
 
 export const VideoPlayer: React.FC<VideoPlayerProps> = ({
@@ -52,7 +56,9 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
   onProgress,
   subtitles1,
   subtitles2,
-  source
+  source,
+  disableProgressRestore = false,
+  onSeekProgrammatic
 }) => {
   const videoRef = useRef<HTMLDivElement>(null)
   const playerRef = useRef<Player | null>(null)
@@ -60,6 +66,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
   const progressKeyRef = useRef<string | undefined>(progressKey)
   const onProgressRef = useRef(onProgress)
   const onEndedRef = useRef(onEnded)
+  const onSeekProgrammaticRef = useRef(onSeekProgrammatic)
   const blackScreenRef = useRef<HTMLDivElement>(null)
 
   // ── Subtitle refs (đọc trong RAF loop, tránh stale closure) ────────────────
@@ -88,7 +95,8 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
     progressKeyRef.current = progressKey
     onProgressRef.current = onProgress
     onEndedRef.current = onEnded
-  }, [progressKey, onProgress, onEnded])
+    onSeekProgrammaticRef.current = onSeekProgrammatic
+  }, [progressKey, onProgress, onEnded, onSeekProgrammatic])
 
   // Sync subtitle arrays vào ref khi props thay đổi
   useEffect(() => {
@@ -357,6 +365,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
             // 2. Ép tua đi (CHỈ 1 LẦN NHỜ CỜ KHÓA)
             if (!isSkippingAd) {
               isSkippingAd = true
+              onSeekProgrammaticRef.current?.('seek')
               player.currentTime(upcoming.end + 0.2)
             }
           } else {
@@ -431,10 +440,13 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
         })
 
         // Restore vị trí xem — ưu tiên giá trị lớn hơn giữa URL (cross-device) và localStorage (same device)
-        const saved = Math.max(initialTime ?? 0, progressKey ? getWatchProgress(progressKey) : 0)
+        const saved = disableProgressRestore
+          ? 0
+          : Math.max(initialTime ?? 0, progressKey ? getWatchProgress(progressKey) : 0)
         if (saved > 0) {
           player.one('loadedmetadata', () => {
             // Chỉ seek nếu tập này thực sự có tiến trình cũ
+            onSeekProgrammaticRef.current?.('seek')
             player.currentTime(saved)
             player.play()?.catch(() => {})
           })
@@ -513,17 +525,21 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
         progressKeyRef.current = progressKey
         player.src(options.sources)
 
-        // Lấy tiến trình CỦA TẬP MỚI
-        const savedOnChange = Math.max(initialTime ?? 0, progressKey ? getWatchProgress(progressKey) : 0)
+        // Trong phòng: vị trí do phòng quyết định (usePlayerSync), không khôi phục tiến trình cũ
+        if (!disableProgressRestore) {
+          // Lấy tiến trình CỦA TẬP MỚI
+          const savedOnChange = Math.max(initialTime ?? 0, progressKey ? getWatchProgress(progressKey) : 0)
 
-        player.one('loadedmetadata', () => {
-          // Luôn luôn seek về mốc thời gian của tập mới (kể cả là 0) để reset player
-          player.currentTime(savedOnChange)
-          player.play()?.catch(() => {})
-        })
+          player.one('loadedmetadata', () => {
+            // Luôn luôn seek về mốc thời gian của tập mới (kể cả là 0) để reset player
+            onSeekProgrammaticRef.current?.('seek')
+            player.currentTime(savedOnChange)
+            player.play()?.catch(() => {})
+          })
+        }
       }
     }
-  }, [options, onReady, progressKey, initialTime])
+  }, [options, onReady, progressKey, initialTime, disableProgressRestore])
 
   useEffect(() => {
     return () => {
