@@ -216,6 +216,8 @@ function RoomView({ room, me }: { room: RoomDetail; me: RoomMe }) {
               chip={chip}
               toast={s.feedback.toast}
               flying={s.feedback.flying}
+              chat={chat}
+              nameOf={s.nameOf}
               empty={!movie}
               loading={!!movie && s.detailLoading}
               error={!!movie && s.detailError}

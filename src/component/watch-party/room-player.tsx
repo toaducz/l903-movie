@@ -1,13 +1,16 @@
 'use client'
 
-import { useCallback, useMemo, useState, type CSSProperties, type ReactNode } from 'react'
+import { useCallback, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import type Player from 'video.js/dist/types/player'
 import VideoPlayer from '@/component/player/custom-player'
 import type { EpisodeItem } from '@/types/movie'
 import type { EchoGuard } from '@/lib/watch-room/sync'
+import type { RoomMessage } from '@/types/watch-room'
 import Avatar from './avatar'
 import XcIcon from './xc-icon'
+import FsChat from './fs-chat'
 import type { FlyingEmoji, SyncToast } from './use-room-feedback'
+import type { PendingMessage } from './use-room-chat'
 
 // Player trong phòng: KKPHIM (có m3u8) → VideoPlayer đồng bộ; nguồn khác → iframe. Kèm chip đồng bộ, toast, emoji bay.
 
@@ -22,6 +25,9 @@ type Props = {
   chip: SyncChip | null
   toast: SyncToast | null
   flying: FlyingEmoji[]
+  /** chat hiện dạng bong bóng khi khung phòng toàn màn hình */
+  chat: { messages: RoomMessage[]; pending: PendingMessage[]; send: (text: string) => boolean }
+  nameOf: (userId: string) => string
   /** lớp phủ: chưa chọn phim / tiếp tục xem / bạn offline / autoplay bị chặn */
   overlay?: ReactNode
   empty?: boolean
@@ -55,12 +61,14 @@ function SyncedPlayer({
   src,
   poster,
   guard,
-  onPlayer
+  onPlayer,
+  fullscreenTarget
 }: {
   src: string
   poster?: string
   guard: EchoGuard
   onPlayer: (p: Player) => void
+  fullscreenTarget: () => HTMLElement | null
 }) {
   const options = useMemo(
     () => ({
@@ -75,7 +83,13 @@ function SyncedPlayer({
   )
   const onSeekProgrammatic = useCallback(() => guard.suppress('seek'), [guard])
   return (
-    <VideoPlayer options={options} onReady={onPlayer} disableProgressRestore onSeekProgrammatic={onSeekProgrammatic} />
+    <VideoPlayer
+      options={options}
+      onReady={onPlayer}
+      disableProgressRestore
+      onSeekProgrammatic={onSeekProgrammatic}
+      fullscreenTarget={fullscreenTarget}
+    />
   )
 }
 
@@ -100,7 +114,10 @@ function EmbedPlayer({ src, title }: { src: string; title: string }) {
 }
 
 export default function RoomPlayer(props: Props) {
-  const { item, poster, isSynced, guard, onPlayer, chip, toast, flying, overlay, empty, loading, error } = props
+  const { item, poster, isSynced, guard, onPlayer, chip, toast, flying, chat, nameOf, overlay, empty, loading, error } =
+    props
+  const hostRef = useRef<HTMLDivElement>(null)
+  const fullscreenTarget = useCallback(() => hostRef.current, [])
 
   let media: ReactNode = null
   if (loading)
@@ -116,11 +133,20 @@ export default function RoomPlayer(props: Props) {
       </div>
     )
   else if (item && isSynced)
-    media = <SyncedPlayer key={item.link_m3u8} src={item.link_m3u8} poster={poster} guard={guard} onPlayer={onPlayer} />
+    media = (
+      <SyncedPlayer
+        key={item.link_m3u8}
+        src={item.link_m3u8}
+        poster={poster}
+        guard={guard}
+        onPlayer={onPlayer}
+        fullscreenTarget={fullscreenTarget}
+      />
+    )
   else if (item?.link_embed) media = <EmbedPlayer key={item.link_embed} src={item.link_embed} title={item.name} />
 
   return (
-    <div className={`xc-pl ${empty ? 'xc-stripe' : ''}`}>
+    <div ref={hostRef} className={`xc-pl ${empty ? 'xc-stripe' : ''}`}>
       {media}
       {chip && (
         <div className='xc-pl-tl'>
@@ -148,6 +174,7 @@ export default function RoomPlayer(props: Props) {
           </span>
         ))}
       </div>
+      <FsChat hostRef={hostRef} messages={chat.messages} pending={chat.pending} nameOf={nameOf} onSend={chat.send} />
       {overlay}
     </div>
   )

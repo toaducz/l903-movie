@@ -86,6 +86,19 @@
 .xc-fe small { font: 800 9px var(--font-mono); background: rgba(13, 10, 20, 0.85); padding: 2px 5px; border-radius: 4px; color: #fff; margin-top: 2px; }
 @keyframes xc-fly { 0% { opacity: 0; transform: translateY(0) scale(0.5); } 12% { opacity: 1; transform: translateY(-30px) scale(1.15) rotate(-8deg); } 70% { opacity: 1; } 100% { opacity: 0; transform: translate(var(--dx), -290px) scale(0.9) rotate(8deg); } }
 @keyframes xc-fade { 0% { opacity: 0; } 15%, 70% { opacity: 1; } 100% { opacity: 0; } }
+.xc-pl:fullscreen { aspect-ratio: auto; width: 100%; height: 100%; border: 0; border-radius: 0; }
+/* chat khi toàn màn hình: góc dưới-trái, trên control bar (3em = 30px) */
+.xc-fsc { position: absolute; left: 16px; bottom: 56px; z-index: 61; display: flex; flex-direction: column; gap: 8px; max-width: min(420px, calc(100% - 32px)); pointer-events: none; }
+.xc-fsb-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
+.xc-fsb { display: flex; gap: 8px; align-items: flex-start; padding: 6px 12px 6px 6px; background: rgba(13, 10, 20, 0.78); border: 1px solid rgba(255, 255, 255, 0.14); border-radius: 16px; backdrop-filter: blur(4px); font-size: 13px; line-height: 1.35; animation: xc-fsb 6s ease forwards; }
+.xc-fsb b { display: block; font-size: 12px; font-weight: 800; }
+.xc-fsb p { margin: 0; overflow: hidden; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; }
+@keyframes xc-fsb { 0% { opacity: 0; transform: translateY(8px); } 5%, 85% { opacity: 1; transform: none; } 100% { opacity: 0; } }
+@keyframes xc-fsb-o { 85% { opacity: 1; } 100% { opacity: 0; } }
+.xc-fsi { pointer-events: auto; }
+.xc-fsi input { width: min(360px, calc(100vw - 32px)); height: 38px; padding: 0 14px; border-radius: 999px; background: var(--c-card); border: 1px solid rgba(255, 255, 255, 0.22); color: #fff; font-size: 14px; outline: none; }
+.xc-fsi input:focus-visible { border-color: var(--c-cyan); box-shadow: 0 0 0 2px rgba(34, 211, 238, 0.35); }
+.xc-fse { display: block; margin-top: 4px; padding-left: 14px; font-size: 12px; color: #fdba74; }
 .xc-pov { position: absolute; inset: 0; background: rgba(13, 10, 20, 0.74); backdrop-filter: blur(2px); display: grid; place-items: center; z-index: 62; padding: 16px; }
 .xc-pcard { width: 470px; max-width: 100%; background: var(--c-card); border: 1px solid rgba(255, 255, 255, 0.16); border-radius: 20px; padding: 22px; box-shadow: 7px 7px 0 var(--c-yel); transform: rotate(-1deg); display: flex; flex-direction: column; gap: 14px; }
 .xc-pcard h4 { margin: 0; font-size: 22px; font-weight: 900; letter-spacing: -0.03em; line-height: 1.15; }
@@ -179,5 +192,6 @@
 @media (prefers-reduced-motion: reduce) {
   .xc-fe { animation: xc-fade 2.6s ease forwards; }
   .xc-stt, .xc-pulse, .xc-spin { animation: none; }
+  .xc-fsb { animation-name: xc-fsb-o; }
   .dx-b.xc-b-xc:hover:not(:disabled), .xc-rxb:hover { transform: none; }
 }
