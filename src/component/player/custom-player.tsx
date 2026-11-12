@@ -45,6 +45,8 @@ interface VideoPlayerProps {
   disableProgressRestore?: boolean
   /** Gọi NGAY TRƯỚC mỗi lần code tự đổi currentTime (nhảy quảng cáo, khôi phục tiến trình) — để phòng không phát lại */
   onSeekProgrammatic?: () => void
+  /** Trong phòng: phần tử được phóng to toàn màn hình thay cho player (để chat/toast/emoji vẫn hiện) */
+  fullscreenTarget?: () => HTMLElement | null
 }
 
 export const VideoPlayer: React.FC<VideoPlayerProps> = ({
@@ -58,7 +60,8 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
   subtitles2,
   source,
   disableProgressRestore = false,
-  onSeekProgrammatic
+  onSeekProgrammatic,
+  fullscreenTarget
 }) => {
   const videoRef = useRef<HTMLDivElement>(null)
   const playerRef = useRef<Player | null>(null)
@@ -67,6 +70,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
   const onProgressRef = useRef(onProgress)
   const onEndedRef = useRef(onEnded)
   const onSeekProgrammaticRef = useRef(onSeekProgrammatic)
+  const fullscreenTargetRef = useRef(fullscreenTarget)
   const blackScreenRef = useRef<HTMLDivElement>(null)
 
   // ── Subtitle refs (đọc trong RAF loop, tránh stale closure) ────────────────
@@ -96,7 +100,8 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
     onProgressRef.current = onProgress
     onEndedRef.current = onEnded
     onSeekProgrammaticRef.current = onSeekProgrammatic
-  }, [progressKey, onProgress, onEnded, onSeekProgrammatic])
+    fullscreenTargetRef.current = fullscreenTarget
+  }, [progressKey, onProgress, onEnded, onSeekProgrammatic, fullscreenTarget])
 
   // Sync subtitle arrays vào ref khi props thay đổi
   useEffect(() => {
@@ -294,6 +299,35 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
           }
         }
         player.on('fullscreenchange', handleFullscreenChange)
+
+        // Có fullscreenTarget: nút fullscreen, double-click, phím F đều đi qua 3 method này nên đè ở đây là đủ.
+        // iOS Safari không fullscreen được element thường → rơi về fullscreen gốc của video.js.
+        if (fullscreenTargetRef.current) {
+          const roomTarget = () => {
+            const el = fullscreenTargetRef.current?.()
+            return el && document.fullscreenEnabled && typeof el.requestFullscreen === 'function' ? el : null
+          }
+          const inRoomFullscreen = () => {
+            const el = roomTarget()
+            return !!el && document.fullscreenElement === el
+          }
+          const vjsIsFullscreen = player.isFullscreen.bind(player)
+          const vjsRequest = player.requestFullscreen.bind(player)
+          const vjsExit = player.exitFullscreen.bind(player)
+          player.isFullscreen = (isFS?: boolean) =>
+            isFS === undefined && inRoomFullscreen() ? true : vjsIsFullscreen(isFS)
+          player.requestFullscreen = (fsOptions?: unknown) => {
+            const el = roomTarget()
+            return el ? el.requestFullscreen().catch(() => {}) : vjsRequest(fsOptions)
+          }
+          player.exitFullscreen = () => (inRoomFullscreen() ? document.exitFullscreen().catch(() => {}) : vjsExit())
+          // video.js chỉ báo fullscreenchange khi chính player.el() fullscreen → tự báo để icon nút + xoay ngang chạy
+          const handleRoomFullscreenChange = () => {
+            if (roomTarget()) player.trigger('fullscreenchange')
+          }
+          document.addEventListener('fullscreenchange', handleRoomFullscreenChange)
+          player.on('dispose', () => document.removeEventListener('fullscreenchange', handleRoomFullscreenChange))
+        }
 
         let adRegions: Array<{ start: number; end: number; skipped?: boolean }> = []
         let mutedByAd = false
