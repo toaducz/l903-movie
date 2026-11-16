@@ -4,13 +4,14 @@ import './globals.css'
 import './watched.css'
 import './watch-party.css'
 import Navbar from '@/component/layout/navbar'
-import QueryProvider from '@/app/provider'
+import QueryProvider from '@/providers/query-provider'
 import { Suspense } from 'react'
-import NProgressInit from '@/component/layout/NProgressInit'
-import { AuthProvider } from './auth-provider'
+import NProgressInit from '@/component/layout/nprogress-init'
+import { AuthProvider } from '@/providers/auth-provider'
 import Footer from '@/component/layout/footer'
 import ChatWidget from '@/component/chat-widget/chat-widget'
-import WatchedProvider from '@/component/watched/watched-provider'
+import WatchedProvider from '@/providers/watched-provider'
+import { SearchProvider } from '@/providers/search-provider'
 
 const beVietnamPro = Be_Vietnam_Pro({
   variable: '--font-be-vietnam-pro',
@@ -27,7 +28,20 @@ const jetbrainsMono = JetBrains_Mono({
 
 export const metadata: Metadata = {
   title: 'L903 Movie',
-  description: ''
+  description: '',
+  robots: {
+    index: false,
+    follow: false,
+    nocache: true,
+    googleBot: {
+      index: false,
+      follow: false,
+      noimageindex: true,
+      'max-video-preview': -1,
+      'max-image-preview': 'none',
+      'max-snippet': -1
+    }
+  }
 }
 
 export default function RootLayout({
@@ -49,12 +63,14 @@ export default function RootLayout({
           </Suspense>
           <AuthProvider>
             <WatchedProvider>
+              <SearchProvider>
               <div className='c-app'>
                 <Navbar />
                 {children}
                 <Footer />
               </div>
               <ChatWidget />
+              </SearchProvider>
             </WatchedProvider>
           </AuthProvider>
         </QueryProvider>

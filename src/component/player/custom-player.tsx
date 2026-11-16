@@ -10,6 +10,7 @@ import { findActiveSub } from '@/utils/parse-srt'
 import SubtitleSettingsPanel from '@/component/player/subtitle-settings-panel'
 import { getSubtitleSettings, saveSubtitleSettings, DEFAULT_SUBTITLE_SETTINGS } from '@/utils/subtitle-settings'
 import type { SubtitleSettings } from '@/types/subtitle'
+import { isAdSegment } from '@/utils/m3u8-cleaner'
 
 interface HLSSegment {
   resolvedUri?: string
@@ -113,6 +114,20 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
 
   const [seekHint, setSeekHint] = useState<{ side: 'left' | 'right'; key: number } | null>(null)
   const lastTapRef = useRef<{ time: number; side: 'left' | 'right' } | null>(null)
+  const touchStartRef = useRef<{ x: number; y: number; wasActive: boolean } | null>(null)
+
+  // Chụp trạng thái UI ở touchstart, vì tới touchend video.js đã tự đảo userActive
+  const handleTouchStart = useCallback((e: React.TouchEvent<HTMLDivElement>) => {
+    const player = playerRef.current
+    const touch = e.touches[0]
+    if (!player || !touch) return
+    touchStartRef.current = {
+      x: touch.clientX,
+      y: touch.clientY,
+      // Đang pause thì control bar luôn hiện → coi như UI đang hiện
+      wasActive: player.userActive() === true || player.paused()
+    }
+  }, [])
   const singleTapTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const handleTap = useCallback((e: React.TouchEvent<HTMLDivElement>) => {
@@ -123,7 +138,11 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
     const target = e.target as HTMLElement
     if (target.closest('.vjs-control-bar') || target.closest('button')) return
 
+    const start = touchStartRef.current
+    touchStartRef.current = null
     const touch = e.changedTouches[0]
+    // Vuốt/cuộn trang qua player thì bỏ qua, chỉ xử lý chạm
+    if (!start || Math.abs(touch.clientX - start.x) > 10 || Math.abs(touch.clientY - start.y) > 10) return
     const rect = (e.currentTarget as HTMLDivElement).getBoundingClientRect()
     const side = touch.clientX - rect.left < rect.width / 2 ? 'left' : 'right'
     const now = Date.now()
@@ -142,7 +161,11 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
       setTimeout(() => setSeekHint(null), 700)
     } else {
       lastTapRef.current = { time: now, side }
-      // single-tap → đợi 300ms, nếu không có tap thứ 2 thì toggle pause/play
+      // video.js tự đảo userActive mỗi lần tap → ép hiện UI ngay (không bị chớp ẩn)
+      player.userActive(true)
+      // UI đang ẩn: chạm lần đầu chỉ để hiện UI, không dừng phim
+      if (!start.wasActive) return
+      // UI đang hiện: đợi xem có tap thứ 2 (tua ±10s) không, nếu không thì toggle pause/play
       if (singleTapTimerRef.current) {
         clearTimeout(singleTapTimerRef.current)
       }
@@ -346,13 +369,13 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
           const newAdRegions: Array<{ start: number; end: number }> = []
 
           // \d{4,}\.ts = pattern mới kiểu 000010.ts (tên toàn số từ 4 chữ số trở lên)
-          const adRegex = /^(segment_\d+|ads?_.*|promo_.*|\d{4,})\.ts$/i
+          // Nhận diện quảng cáo SSAI qua isAdSegment
 
           media.segments.forEach(segment => {
             const url = segment.resolvedUri || segment.uri || ''
             const fileName = url.split('/').pop()?.split('?')[0]?.split('#')[0] || ''
 
-            if (adRegex.test(fileName)) {
+            if (isAdSegment(url, fileName)) {
               newAdRegions.push({
                 start: currentTimeAcc,
                 end: currentTimeAcc + segment.duration
@@ -586,7 +609,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
   }, [])
 
   return (
-    <div data-vjs-player className='absolute top-0 left-0 w-full h-full overflow-hidden' onTouchEnd={handleTap}>
+    <div data-vjs-player className='absolute top-0 left-0 w-full h-full overflow-hidden' onTouchStart={handleTouchStart} onTouchEnd={handleTap}>
       <div ref={videoRef} className='w-full h-full' />
 
       <div

@@ -1,11 +1,13 @@
 'use client'
 
 import React, { useState, useEffect, useRef } from 'react'
+import { filterAdSegmentsFromM3U8 } from '@/utils/m3u8-cleaner'
 
 interface DownloadModalProps {
   isOpen: boolean
   onClose: () => void
-  m3u8Url: string
+  m3u8Url?: string
+  embedUrl?: string
   fileName: string
 }
 
@@ -13,11 +15,12 @@ type DownloadStatus = 'confirm' | 'fetching_playlist' | 'downloading' | 'saving'
 
 const KEYWORDS = ['toiyeuanime', 'toilagay']
 
-export const DownloadModal: React.FC<DownloadModalProps> = ({ isOpen, onClose, m3u8Url, fileName }) => {
+export const DownloadModal: React.FC<DownloadModalProps> = ({ isOpen, onClose, m3u8Url, embedUrl, fileName }) => {
   const [status, setStatus] = useState<DownloadStatus>('confirm')
   const [progress, setProgress] = useState(0)
   const [downloadedSegments, setDownloadedSegments] = useState(0)
   const [totalSegments, setTotalSegments] = useState(0)
+  const [adsRemoved, setAdsRemoved] = useState(0)
   const [errorMessage, setErrorMessage] = useState('')
 
   const [expectedKeyword, setExpectedKeyword] = useState('')
@@ -34,6 +37,7 @@ export const DownloadModal: React.FC<DownloadModalProps> = ({ isOpen, onClose, m
       setProgress(0)
       setDownloadedSegments(0)
       setTotalSegments(0)
+      setAdsRemoved(0)
       setErrorMessage('')
       setInputValue('')
 
@@ -71,8 +75,11 @@ export const DownloadModal: React.FC<DownloadModalProps> = ({ isOpen, onClose, m
     }
   }
 
-  // Logic to parse m3u8
-  const parseM3U8 = async (url: string, signal: AbortSignal): Promise<string[]> => {
+  // Logic to parse m3u8 and remove SSAI advertisements
+  const parseM3U8 = async (
+    url: string,
+    signal: AbortSignal
+  ): Promise<{ segmentUrls: string[]; adsRemovedCount: number }> => {
     const { text, finalUrl } = await fetchText(url, signal)
     const lines = text.split('\n').map(line => line.trim())
 
@@ -102,20 +109,14 @@ export const DownloadModal: React.FC<DownloadModalProps> = ({ isOpen, onClose, m
     }
 
     // 2. Nếu là Media Playlist (chứa trực tiếp các segment .ts)
-    const segmentUrls: string[] = []
-    for (let i = 0; i < lines.length; i++) {
-      const line = lines[i]
-      if (line && !line.startsWith('#')) {
-        const resolvedSegmentUrl = new URL(line, finalUrl).href
-        segmentUrls.push(resolvedSegmentUrl)
-      }
+    // Tách lọc bỏ hoàn toàn các segment quảng cáo SSAI từ server
+    const { cleanUrls, adsRemovedCount } = filterAdSegmentsFromM3U8(text, finalUrl)
+
+    if (cleanUrls.length === 0) {
+      throw new Error('Không tìm thấy đoạn video (.ts) hợp lệ nào trong file m3u8.')
     }
 
-    if (segmentUrls.length === 0) {
-      throw new Error('Không tìm thấy đoạn video (.ts) nào trong file m3u8.')
-    }
-
-    return segmentUrls
+    return { segmentUrls: cleanUrls, adsRemovedCount }
   }
 
   // Bắt đầu tải video
@@ -123,21 +124,42 @@ export const DownloadModal: React.FC<DownloadModalProps> = ({ isOpen, onClose, m
     // Kiểm tra chéo từ khóa trực tiếp từ DOM Input Ref để chống hack/bypass bằng cách thay đổi React State
     const currentVal = inputRef.current?.value || ''
     if (btoa(currentVal) !== keywordHashRef.current) {
-      alert('Không thể bypass đâu bạn ơi! Hãy gõ đúng từ khóa nhé 😉')
+      alert('Không thể bypass đâu bạn ơi! Đừng cố :D')
       return
     }
 
     setStatus('fetching_playlist')
     setProgress(0)
     setDownloadedSegments(0)
+    setAdsRemoved(0)
 
     const controller = new AbortController()
     abortControllerRef.current = controller
     const signal = controller.signal
 
     try {
-      // Bước 1: Phân tích m3u8 lấy danh sách segment
-      const segmentUrls = await parseM3U8(m3u8Url, signal)
+      let targetM3u8 = m3u8Url || ''
+
+      // Nếu không có m3u8Url hoặc m3u8Url là link embed, thử cào từ player
+      if (!targetM3u8 || (!targetM3u8.includes('.m3u8') && !targetM3u8.includes('.mp4'))) {
+        const candidateUrl = targetM3u8 || embedUrl
+        if (!candidateUrl) {
+          throw new Error('Không tìm thấy đường dẫn phát video cho tập phim này.')
+        }
+
+        const extractRes = await fetch(`/api/extract-m3u8?url=${encodeURIComponent(candidateUrl)}`, { signal })
+        const extractData = (await extractRes.json()) as { success: boolean; m3u8Url?: string; error?: string }
+
+        if (!extractData.success || !extractData.m3u8Url) {
+          throw new Error(extractData.error || 'Không thể trích xuất luồng video từ player này.')
+        }
+
+        targetM3u8 = extractData.m3u8Url
+      }
+
+      // Bước 1: Phân tích m3u8 lấy danh sách segment đã làm sạch quảng cáo
+      const { segmentUrls, adsRemovedCount } = await parseM3U8(targetM3u8, signal)
+      setAdsRemoved(adsRemovedCount)
       const total = segmentUrls.length
       setTotalSegments(total)
       setStatus('downloading')
@@ -296,14 +318,14 @@ export const DownloadModal: React.FC<DownloadModalProps> = ({ isOpen, onClose, m
               />
             </div>
 
-            {/* Cảnh báo OPhim */}
-            <div className='p-3 bg-[var(--c-yel)]/10 border border-[var(--c-yel)]/30 text-[var(--c-yel)] rounded-xl text-xs flex gap-2.5 items-start leading-relaxed'>
-              <span className='text-base select-none'>⚠️</span>
+            {/* Thông báo tính năng lọc quảng cáo */}
+            {/* <div className='p-3 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-xl text-xs flex gap-2.5 items-start leading-relaxed'>
+              <span className='text-base select-none'>🛡️</span>
               <div>
-                <p className='font-bold uppercase tracking-wider text-[10px] mb-0.5'>Cảnh báo tải xuống</p>
-                <p className='opacity-90'>Nên tải từ nguồn OPhim để đảm bảo độ ổn định và tốc độ tốt nhất.</p>
+                <p className='font-bold uppercase tracking-wider text-[10px] mb-0.5'>hẹ hẹ</p>
+                <p className='opacity-90'>Hệ thống tự động phát hiện và loại bỏ phân đoạn quảng cáo SSAI để phim không bị đứng hình.</p>
               </div>
-            </div>
+            </div> */}
 
             <div className='flex gap-3 pt-2'>
               <button
@@ -343,6 +365,12 @@ export const DownloadModal: React.FC<DownloadModalProps> = ({ isOpen, onClose, m
                 {status === 'downloading' && `Đã tải ${downloadedSegments} / ${totalSegments} phần video (.ts)`}
                 {status === 'saving' && 'Vui lòng chờ trong giây lát để xuất file MP4...'}
               </p>
+              {adsRemoved > 0 && (
+                <div className='inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-full text-[11px] font-medium'>
+                  <span>🛡️</span>
+                  <span>Đã loại bỏ {adsRemoved} đoạn quảng cáo nhà đài</span>
+                </div>
+              )}
             </div>
 
             {/* Progress Bar Container */}
@@ -376,6 +404,11 @@ export const DownloadModal: React.FC<DownloadModalProps> = ({ isOpen, onClose, m
             <div className='space-y-1'>
               <h3 className='text-base font-bold text-white'>Tải xuống hoàn tất!</h3>
               <p className='text-xs text-white/50'>File video đã được lưu về máy của bạn thành công.</p>
+              {adsRemoved > 0 && (
+                <p className='text-xs text-emerald-400 font-semibold pt-1'>
+                  🛡️ Phim đã được làm sạch ({adsRemoved} quảng cáo bị loại bỏ).
+                </p>
+              )}
             </div>
           </div>
         )}

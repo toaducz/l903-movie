@@ -6,8 +6,9 @@ import { useQuery } from '@tanstack/react-query'
 import { getLatestMovies, getListMovies } from '@/services/movie-service'
 import Loading from '@/component/status/loading'
 import Error from '@/component/status/error'
-import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import ContinueWatchingSection from '@/component/sections/continue-watching-section'
+import CommunityStripSection from '@/component/sections/community-strip-section'
 import HeroSection from '@/component/sections/hero-section'
 import SeriesRowSection from '@/component/sections/series-row-section'
 import MoviesRowSection from '@/component/sections/movies-row-section'
@@ -18,7 +19,6 @@ import type { MovieItem as MovieItemType } from '@/types/movie'
 
 
 export default function Home() {
-  const router = useRouter()
   const [tab, setTab] = useState<'all' | 'phim-bo' | 'phim-le' | 'hoat-hinh'>('all')
 
   const { data: updateMovie, isLoading, isError } = useQuery(getLatestMovies({ page: 1 }))
@@ -55,6 +55,9 @@ export default function Home() {
 
       {/* ── Continue Watching ────────────────────────── */}
       <ContinueWatchingSection />
+
+      {/* ── Community Strip ──────────────────────────── */}
+      <CommunityStripSection />
 
       {/* ── New Releases grid ────────────────────────── */}
       <section className='px-5 sm:px-10 py-8'>
@@ -102,12 +105,12 @@ export default function Home() {
 
           {/* See more */}
           <div className='mt-10 flex justify-center'>
-            <button
-              onClick={() => router.push('/all-movie')}
+            <Link
+              href='/all-movie'
               className='text-sm text-white/40 hover:text-[var(--c-cyan)] transition-colors underline cursor-pointer'
             >
               Xem thêm tất cả phim mới
-            </button>
+            </Link>
           </div>
         </div>
       </section>

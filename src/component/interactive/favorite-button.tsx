@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useAuth } from '@/app/auth-provider'
+import { useAuth } from '@/providers/auth-provider'
 import WatchedIcon from '@/component/watched/watched-icon'
 
 type FavoriteButtonProps = {

@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 import Image from 'next/image'
 import Link from 'next/link'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { useAuth } from '@/app/auth-provider'
+import { useAuth } from '@/providers/auth-provider'
 import Loading from '@/component/status/loading'
 import pekoraNotFound from '@/assets/image/pekora-not-found.jpg'
 import { getMovieDetail } from '@/services/movie-service'
@@ -27,7 +27,7 @@ import RoomEmptyState from './room-empty-state'
 import ResumeCard from './resume-card'
 import FriendOfflineCard from './friend-offline-card'
 import InviteDialog, { inviteUrlOf } from './invite-dialog'
-import { useIsMobile } from '@/component/watched/use-is-mobile'
+import { useIsMobile } from '@/hooks/use-is-mobile'
 
 /** Đọc + xoá cờ một lần trong sessionStorage (đặt bởi popup chọn phòng ở trang chi tiết) */
 function takeFlag(key: string): boolean {

@@ -3,7 +3,8 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react'
 import Image from 'next/image'
 import WatchedIcon from './watched-icon'
-import { useIsMobile } from './use-is-mobile'
+import { useIsMobile } from '@/hooks/use-is-mobile'
+import { useAuth } from '@/providers/auth-provider'
 import { saveWatched } from '@/services/watched-service'
 import { WATCHED_NOTE_MAX } from '@/lib/watched-validation'
 import type { WatchedMovie, WatchedUpsertInput } from '@/types/watched'
@@ -32,6 +33,7 @@ type Status = 'idle' | 'saving' | 'error'
 const FOCUSABLE = 'button:not([disabled]), textarea:not([disabled]), [tabindex="0"]'
 
 export default function RatingDialog({ target, onClose, onSaved, onDelete }: Props) {
+  const { user } = useAuth()
   const isMobile = useIsMobile()
   const isEdit = target.mode === 'edit'
   const [rating, setRating] = useState(target.initialScore ?? 0)
@@ -59,8 +61,35 @@ export default function RatingDialog({ target, onClose, onSaved, onDelete }: Pro
     if (!rating || saving) return
     setStatus('saving')
     try {
-      const movie = await saveWatched({ ...target.input, score: rating, note: note.trim() || null })
-      onSaved(movie)
+      // 1. Save score to watched_movies
+      const movie = await saveWatched({ ...target.input, score: rating })
+      
+      const trimmedNote = note.trim()
+
+      // 2. Đồng bộ note với movie_reviews
+      if (trimmedNote) {
+        await fetch('/api/review', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            slug: target.input.slug,
+            name: target.input.name,
+            image: target.input.image || '',
+            score: rating,
+            review_text: trimmedNote,
+            user_email: user?.email,
+            parent_id: null,
+            watched_movie_id: movie.id
+          })
+        })
+      } else if (target.initialNote) {
+        // Nếu trước đó đã có ghi chú nhưng nay xóa trắng -> xóa review gốc tương ứng
+        await fetch(`/api/review?slug=${target.input.slug}`, {
+          method: 'DELETE'
+        })
+      }
+      
+      onSaved({ ...movie, note: trimmedNote || null })
     } catch {
       setStatus('error')
     }
@@ -126,7 +155,7 @@ export default function RatingDialog({ target, onClose, onSaved, onDelete }: Pro
         {target.meta && <div className='text-xs text-[var(--c-dim)]'>{target.meta}</div>}
         <div className='inline-flex gap-1.5 items-center text-xs font-semibold text-[var(--c-cyan)] mt-1.5'>
           <WatchedIcon name='lock' size={13} />
-          Điểm & ghi chú chỉ mình bạn thấy
+          Điểm & bình luận chỉ mình bạn thấy nếu không public
         </div>
       </div>
     </div>

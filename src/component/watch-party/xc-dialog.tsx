@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, type CSSProperties, type KeyboardEvent, type ReactNode } from 'react'
 import BottomSheet from '@/component/watched/bottom-sheet'
-import { useIsMobile } from '@/component/watched/use-is-mobile'
+import { useIsMobile } from '@/hooks/use-is-mobile'
 import XcIcon from './xc-icon'
 
 // Khung popup chung của "Xem chung": modal ở desktop (khoá cuộn, Esc, giữ focus, trả focus) / bottom sheet ở mobile

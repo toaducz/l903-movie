@@ -19,12 +19,13 @@ import WatchPartyButton from '@/component/watch-party/watch-party-button'
 import WatchedIcon from '@/component/watched/watched-icon'
 import { saveViewHistory } from '@/utils/local-storage'
 import VideoPlayer from '@/component/player/custom-player'
-import { useAuth } from '@/app/auth-provider'
+import { useAuth } from '@/providers/auth-provider'
 import MovieReview from '@/component/interactive/movie-review'
 import type { SubtitleParams, SubtitleCue } from '@/types/subtitle'
 import { DownloadModal } from '@/component/interactive/download-modal'
-import FinishBanner, { useFinishBanner } from '@/component/watched/finish-banner'
-import { FINISH_THRESHOLD, isFinalEpisode } from '@/lib/watched-finish'
+import FinishBanner from '@/component/watched/finish-banner'
+import { useFinishBanner } from '@/hooks/use-finish-banner'
+import { FINISH_THRESHOLD, isFinalEpisode } from '@/utils/watched-finish'
 
 const AUTOPLAY_COUNTDOWN = 5
 // OPhim đã chuyển thành VSMOV nên không còn nút OPhim riêng
@@ -520,7 +521,7 @@ export default function WatchPage() {
                   </button>
                 )}
 
-                {episodeToPlay?.link_m3u8 && (
+                {(episodeToPlay?.link_m3u8 || episodeToPlay?.link_embed) && (
                   <button
                     onClick={() => setShowDownloadModal(true)}
                     className='px-4 py-1.5 text-xs font-black rounded-full transition cursor-pointer border border-[var(--c-pink)] bg-transparent text-[var(--c-pink)] hover:bg-[var(--c-pink)] hover:text-white shadow-[0_0_10px_rgba(236,72,153,0.15)] hover:shadow-[0_0_15px_rgba(236,72,153,0.3)]'
@@ -812,7 +813,8 @@ export default function WatchPage() {
           <DownloadModal
             isOpen={showDownloadModal}
             onClose={() => setShowDownloadModal(false)}
-            m3u8Url={episodeToPlay.link_m3u8}
+            m3u8Url={episodeToPlay.link_m3u8 || ''}
+            embedUrl={episodeToPlay.link_embed || ''}
             fileName={(() => {
               const rawName = `[${source}] ${movie.name} ${episodeToPlay.name}.mp4`
               return rawName.replace(/[\\/:*?"<>|]/g, '') // sanitize

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { RoomMember } from '@/types/watch-room'
-import { useIsMobile } from '@/component/watched/use-is-mobile'
+import { useIsMobile } from '@/hooks/use-is-mobile'
 import { AvatarStack } from './avatar'
 import XcDialog from './xc-dialog'
 import XcIcon from './xc-icon'

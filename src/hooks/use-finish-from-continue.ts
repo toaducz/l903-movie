@@ -2,7 +2,7 @@
 
 import { useCallback, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import { useWatched } from './watched-provider'
+import { useWatched } from '@/providers/watched-provider'
 import {
   getWatchedStatus,
   removeWatched,
@@ -22,7 +22,7 @@ const LEAVE_MS = 250 // thẻ thu khỏi hàng
 const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
 export const continueKey = (item: WatchingItem) => `${item.slug}_${item.source ?? ''}`
 
-type Options = {
+interface Options {
   /** Bỏ phim khỏi "Đang xem dở" (UI + localStorage + server) */
   removeFromContinue: (item: WatchingItem) => Promise<void>
   /** Tải lại hàng "Đang xem dở" sau khi hoàn tác */
@@ -30,7 +30,7 @@ type Options = {
 }
 
 // Khôi phục mục "Đang xem dở" với đúng tập + % cũ (localStorage + server nếu đã đăng nhập)
-async function restoreContinue(item: WatchingItem) {
+export async function restoreContinue(item: WatchingItem) {
   saveViewHistory({
     name: item.name,
     image: item.image,
@@ -68,6 +68,7 @@ export function useFinishFromContinue({ removeFromContinue, refreshContinue }: O
 
   const finish = useCallback(
     async (item: WatchingItem) => {
+      if (doneKey || leavingKey) return
       const key = continueKey(item)
       const input = toWatchedInputFromHistory(item)
       const source = resolveMovieSource(item.source)
@@ -89,11 +90,14 @@ export function useFinishFromContinue({ removeFromContinue, refreshContinue }: O
         return
       }
 
-      setLeavingKey(key)
-      await wait(LEAVE_MS)
-      await removeFromContinue(item)
-      setDoneKey(null)
-      setLeavingKey(null)
+      try {
+        setLeavingKey(key)
+        await wait(LEAVE_MS)
+        await removeFromContinue(item)
+      } finally {
+        setDoneKey(null)
+        setLeavingKey(null)
+      }
       refreshWatched()
 
       let undone = false
@@ -112,7 +116,7 @@ export function useFinishFromContinue({ removeFromContinue, refreshContinue }: O
           undone = true
           closeRating()
           try {
-            if (previous) await saveWatched({ ...input, score: previous.score, note: previous.note })
+            if (previous) await saveWatched({ ...input, score: previous.score })
             else await removeWatched(item.slug)
             await restoreContinue(item)
             refreshContinue()
@@ -132,8 +136,41 @@ export function useFinishFromContinue({ removeFromContinue, refreshContinue }: O
         // Không bắt buộc: thiếu thể loại/quốc gia chỉ ảnh hưởng bộ lọc
       }
     },
-    [queryClient, openRating, closeRating, showToast, refreshWatched, removeFromContinue, refreshContinue]
+    [queryClient, openRating, closeRating, showToast, refreshWatched, removeFromContinue, refreshContinue, doneKey, leavingKey]
   )
 
-  return { finish, doneKey, leavingKey }
+  const remove = useCallback(
+    async (item: WatchingItem) => {
+      if (doneKey || leavingKey) return
+      const key = continueKey(item)
+      setLeavingKey(key)
+      await wait(LEAVE_MS)
+      try {
+        await removeFromContinue(item)
+      } catch {
+        setLeavingKey(null)
+        showToast({ variant: 'error', title: 'Chưa xoá được', sub: item.name })
+        return
+      }
+      setLeavingKey(null)
+
+      showToast({
+        variant: 'delete',
+        title: 'Đã xoá khỏi Đang xem',
+        sub: item.name,
+        onUndo: async () => {
+          try {
+            await restoreContinue(item)
+            refreshContinue()
+            showToast({ variant: 'undone', title: 'Đã hoàn tác', sub: 'Phim quay lại Đang xem dở' })
+          } catch {
+            showToast({ variant: 'error', title: 'Chưa hoàn tác được', sub: item.name })
+          }
+        }
+      })
+    },
+    [removeFromContinue, refreshContinue, showToast, doneKey, leavingKey]
+  )
+
+  return { finish, remove, doneKey, leavingKey }
 }

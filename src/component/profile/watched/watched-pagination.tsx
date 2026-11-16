@@ -1,8 +1,8 @@
 'use client'
 
-import WatchedIcon from '../watched-icon'
+import WatchedIcon from '@/component/watched/watched-icon'
 
-type Props = {
+interface WatchedPaginationProps {
   page: number
   totalPages: number
   onPage: (page: number) => void
@@ -16,15 +16,15 @@ export function pageItems(page: number, total: number): (number | 'gap')[] {
   return pages.flatMap((p, i) => (i > 0 && p - pages[i - 1] > 1 ? ['gap' as const, p] : [p]))
 }
 
-export default function WatchedPagination({ page, totalPages, onPage }: Props) {
+export default function WatchedPagination({ page, totalPages, onPage }: WatchedPaginationProps) {
   if (totalPages <= 1) return null
   const prev = (
-    <button type='button' aria-label='Trang trước' disabled={page <= 1} onClick={() => onPage(page - 1)}>
+    <button type='button' className='cursor-pointer' aria-label='Trang trước' disabled={page <= 1} onClick={() => onPage(page - 1)}>
       <WatchedIcon name='left' size={18} />
     </button>
   )
   const next = (
-    <button type='button' aria-label='Trang sau' disabled={page >= totalPages} onClick={() => onPage(page + 1)}>
+    <button type='button' className='cursor-pointer' aria-label='Trang sau' disabled={page >= totalPages} onClick={() => onPage(page + 1)}>
       <WatchedIcon name='right' size={18} />
     </button>
   )
@@ -42,7 +42,7 @@ export default function WatchedPagination({ page, totalPages, onPage }: Props) {
             <button
               key={p}
               type='button'
-              className={p === page ? 'on' : ''}
+              className={`cursor-pointer transition-colors duration-200 ${p === page ? 'on' : ''}`}
               aria-current={p === page ? 'page' : undefined}
               onClick={() => onPage(p)}
             >

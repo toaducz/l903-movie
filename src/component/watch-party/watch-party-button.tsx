@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { useAuth } from '@/app/auth-provider'
+import { useAuth } from '@/providers/auth-provider'
 import { findEpisode, findEpisodeByLink, roomEpisodeOf, toRoomMovie } from '@/lib/watch-room/room-media'
 import { resolveMovieSource } from '@/utils/env'
 import type { MovieDetail, MovieSource } from '@/types/movie'

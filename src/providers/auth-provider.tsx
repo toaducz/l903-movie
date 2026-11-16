@@ -1,9 +1,10 @@
 'use client'
-import { createContext, useContext, useEffect, useState } from 'react'
+
+import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
 import type { User } from '@supabase/supabase-js'
 import { useRouter } from 'next/navigation'
 
-type AuthContextType = {
+interface AuthContextType {
   user: User | null
   setUser: (u: User | null) => void
   logout: () => Promise<void>
@@ -12,7 +13,11 @@ type AuthContextType = {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
-export function AuthProvider({ children }: { children: React.ReactNode }) {
+interface AuthProviderProps {
+  children: ReactNode
+}
+
+export function AuthProvider({ children }: AuthProviderProps) {
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
   const router = useRouter()
@@ -21,7 +26,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const checkAuth = () => {
       fetch('/api/auth/me')
         .then(res => res.json())
-        .then(data => setUser(data.user || null))
+        .then((data: { user?: User | null }) => setUser(data.user || null))
         .finally(() => setLoading(false))
     }
 
@@ -35,13 +40,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const logout = async () => {
     await fetch('/api/auth/logout', { method: 'POST' })
     setUser(null) // reset state toàn site
-    router.replace(`/login`)
+    router.replace('/')
+    router.refresh()
   }
 
   return <AuthContext.Provider value={{ user, setUser, logout, loading }}>{children}</AuthContext.Provider>
 }
 
-export function useAuth() {
+export function useAuth(): AuthContextType {
   const ctx = useContext(AuthContext)
   if (!ctx) throw new Error('useAuth must be used within AuthProvider')
   return ctx

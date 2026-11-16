@@ -2,14 +2,14 @@
 
 import { createContext, useCallback, useContext, useMemo, useRef, useState, type ReactNode } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import RatingDialog, { SCORE_LABELS, type RatingTarget } from './rating-dialog'
-import WatchedToast, { type WatchedToastData } from './watched-toast'
+import RatingDialog, { SCORE_LABELS, type RatingTarget } from '@/component/watched/rating-dialog'
+import WatchedToast, { type WatchedToastData } from '@/component/watched/watched-toast'
 import { removeWatched, saveWatched, watchedErrorMessage, WATCHED_QUERY_KEY } from '@/services/watched-service'
 import type { WatchedMovie } from '@/types/watched'
 
 type ToastInput = Omit<WatchedToastData, 'id'>
 
-type WatchedContextValue = {
+export interface WatchedContextValue {
   openRating: (target: RatingTarget) => void
   closeRating: () => void
   showToast: (toast: ToastInput) => void
@@ -61,7 +61,22 @@ export default function WatchedProvider({ children }: { children: ReactNode }) {
         sub: input.name,
         onUndo: async () => {
           try {
-            await saveWatched({ ...input, score: snapshot.initialScore, note: snapshot.initialNote || null })
+            const restored = await saveWatched({ ...input, score: snapshot.initialScore })
+            if (snapshot.initialNote?.trim()) {
+              await fetch('/api/review', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  slug: input.slug,
+                  name: input.name,
+                  image: input.image || '',
+                  score: snapshot.initialScore || 0,
+                  review_text: snapshot.initialNote.trim(),
+                  parent_id: null,
+                  watched_movie_id: restored.id
+                })
+              })
+            }
             await refreshWatched()
             showToast({ variant: 'undone', title: 'Đã hoàn tác', sub: 'Phim quay lại Đã xem' })
           } catch {

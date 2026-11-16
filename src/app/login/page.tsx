@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
-import { useAuth } from '../auth-provider'
+import { useAuth } from '@/providers/auth-provider'
 import { useRouter } from 'next/navigation'
 import { useMutation } from '@tanstack/react-query'
 import Loading from '@/component/status/loading'
