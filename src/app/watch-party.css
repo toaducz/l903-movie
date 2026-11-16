@@ -67,7 +67,9 @@
 .xc-pl { position: relative; background: #000; overflow: hidden; aspect-ratio: 16 / 9; border-radius: 16px; border: 1px solid var(--c-line); }
 .xc-stripe { background: #15101f; }
 .xc-stripe::after { content: ''; position: absolute; inset: 0; background: repeating-linear-gradient(135deg, rgba(255, 255, 255, 0.04) 0 2px, transparent 2px 11px); pointer-events: none; }
-.xc-pl-tl { position: absolute; top: 16px; left: 16px; z-index: 60; display: flex; gap: 8px; pointer-events: none; }
+.xc-pl-tl { position: absolute; top: 16px; left: 16px; z-index: 60; display: flex; gap: 8px; pointer-events: none; transition: opacity 0.3s ease; }
+/* Ẩn chip cùng lúc control bar video.js tự ẩn (đang phát + user không tương tác); không có :has thì chip chỉ không ẩn */
+.xc-pl:has(.video-js.vjs-user-inactive.vjs-playing) .xc-pl-tl { opacity: 0; }
 .xc-sy { display: inline-flex; gap: 6px; align-items: center; height: 28px; padding: 0 11px; border-radius: 999px; font: 700 11px var(--font-mono); background: rgba(34, 211, 238, 0.12); color: var(--c-cyan); border: 1px solid rgba(34, 211, 238, 0.4); white-space: nowrap; backdrop-filter: blur(4px); }
 .xc-sy.lost { background: rgba(249, 115, 22, 0.12); color: #fdba74; border-color: rgba(249, 115, 22, 0.5); }
 .xc-sy.solo { background: rgba(13, 10, 20, 0.6); color: var(--c-dim); border-color: var(--c-line); }
@@ -197,6 +199,7 @@
 @media (prefers-reduced-motion: reduce) {
   .xc-fe { animation: xc-fade 2.6s ease forwards; }
   .xc-stt, .xc-pulse, .xc-spin { animation: none; }
+  .xc-pl-tl { transition: none; }
   .xc-fsb { animation-name: xc-fsb-o; }
   .dx-b.xc-b-xc:hover:not(:disabled), .xc-rxb:hover { transform: none; }
 }
