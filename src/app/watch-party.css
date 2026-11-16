@@ -98,6 +98,10 @@
 .xc-fsi { pointer-events: auto; }
 .xc-fsi input { width: min(360px, calc(100vw - 32px)); height: 38px; padding: 0 14px; border-radius: 999px; background: var(--c-card); border: 1px solid rgba(255, 255, 255, 0.22); color: #fff; font-size: 14px; outline: none; }
 .xc-fsi input:focus-visible { border-color: var(--c-cyan); box-shadow: 0 0 0 2px rgba(34, 211, 238, 0.35); }
+.xc-fsi-row { display: flex; align-items: center; gap: 6px; }
+.xc-fsi-row input { min-width: 0; }
+.xc-fsi-x { flex: none; display: grid; place-items: center; width: 32px; height: 32px; border-radius: 999px; background: var(--c-card); border: 1px solid rgba(255, 255, 255, 0.22); color: #fff; cursor: pointer; }
+.xc-fsi-x:focus-visible { outline: none; border-color: var(--c-cyan); box-shadow: 0 0 0 2px rgba(34, 211, 238, 0.35); }
 .xc-fse { display: block; margin-top: 4px; padding-left: 14px; font-size: 12px; color: #fdba74; }
 .xc-pov { position: absolute; inset: 0; background: rgba(13, 10, 20, 0.74); backdrop-filter: blur(2px); display: grid; place-items: center; z-index: 62; padding: 16px; }
 .xc-pcard { width: 470px; max-width: 100%; background: var(--c-card); border: 1px solid rgba(255, 255, 255, 0.16); border-radius: 20px; padding: 22px; box-shadow: 7px 7px 0 var(--c-yel); transform: rotate(-1deg); display: flex; flex-direction: column; gap: 14px; }
@@ -188,6 +192,7 @@
   .xc-inv h1 { font-size: 34px; }
   .xc-pcard { transform: none; padding: 16px; gap: 10px; }
   .xc-pcard h4 { font-size: 18px; }
+  .xc-fsi-x { width: 44px; height: 44px; }
 }
 @media (prefers-reduced-motion: reduce) {
   .xc-fe { animation: xc-fade 2.6s ease forwards; }
