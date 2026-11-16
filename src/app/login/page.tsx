@@ -6,6 +6,10 @@ import { useRouter } from 'next/navigation'
 import { useMutation } from '@tanstack/react-query'
 import Loading from '@/component/status/loading'
 import LoginAnimation from '@/component/login/login-animation'
+import { safeNextPath } from '@/lib/safe-next-path'
+
+// Trang cần quay lại sau đăng nhập (vd link mời /moi/...) — đọc từ URL lúc dùng, tránh cần Suspense cho useSearchParams
+const readNextPath = () => safeNextPath(new URLSearchParams(window.location.search).get('next')) ?? '/'
 
 type Credentials = {
   email: string
@@ -25,7 +29,7 @@ export default function LoginPage() {
   }, [])
 
   useEffect(() => {
-    if (user) router.replace('/')
+    if (user) router.replace(readNextPath())
   }, [user, router])
 
   const loginMutation = useMutation({
@@ -39,7 +43,7 @@ export default function LoginPage() {
       return res.json()
     },
     onSuccess: () => {
-      window.location.href = '/'
+      window.location.href = readNextPath()
     }
   })
 
