@@ -8,3 +8,6 @@ export function escapeAction({ typing, escLocked }: { typing: boolean; escLocked
   if (typing) return 'close-input'
   return escLocked ? 'exit-fullscreen' : 'none'
 }
+
+export const isTypingTarget = (t: EventTarget | null) =>
+  t instanceof HTMLElement && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)

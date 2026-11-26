@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type RefObject } from 'react'
 import { MESSAGE_MAX } from '@/lib/watch-room/validation'
 import { pruneBubbles, pushBubbles, type Bubble } from '@/lib/watch-room/fs-bubbles'
-import { escapeAction, FS_CHAT_IDLE_CLOSE_MS } from '@/lib/watch-room/fs-chat-keys'
+import { escapeAction, FS_CHAT_IDLE_CLOSE_MS, isTypingTarget } from '@/lib/watch-room/fs-chat-keys'
 import type { RoomMessage } from '@/types/watch-room'
 import Avatar, { nameColor } from './avatar'
 import XcIcon from './xc-icon'
@@ -21,9 +21,6 @@ type Props = {
 
 // Keyboard Lock API chỉ có trên Chromium nên lib.dom chưa khai báo
 type KeyboardLock = { lock: (keys?: string[]) => Promise<void>; unlock: () => void }
-
-const isTypingTarget = (t: EventTarget | null) =>
-  t instanceof HTMLElement && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)
 
 export default function FsChat({ hostRef, messages, pending, nameOf, onSend }: Props) {
   const [active, setActive] = useState(false)

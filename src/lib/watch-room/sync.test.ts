@@ -7,6 +7,7 @@ import {
   isUserInitiatedSeek,
   isPlausibleSentAt,
   nextSentAt,
+  RESYNC_TOLERANCE_SEC,
   shouldApplyQueued,
   tokenRefreshDelay,
   tokenRetryDelay,
@@ -50,6 +51,10 @@ describe('shouldSeek', () => {
     expect(shouldSeek(10, 10.4)).toBe(false)
     expect(shouldSeek(10, 10.6)).toBe(true)
     expect(shouldSeek(10.6, 10)).toBe(true)
+  })
+  it('ngưỡng resync 2s: lệch 1.5s bỏ qua, 2.5s thì tua', () => {
+    expect(shouldSeek(10, 11.5, RESYNC_TOLERANCE_SEC)).toBe(false)
+    expect(shouldSeek(10, 12.5, RESYNC_TOLERANCE_SEC)).toBe(true)
   })
 })
 
