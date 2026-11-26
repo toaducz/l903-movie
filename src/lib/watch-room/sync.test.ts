@@ -4,6 +4,7 @@ import {
   createEchoGuard,
   estimateServerOffset,
   isNewer,
+  isUserInitiatedSeek,
   isPlausibleSentAt,
   nextSentAt,
   shouldApplyQueued,
@@ -164,4 +165,12 @@ describe('tokenRefreshDelay / tokenRetryDelay (M3)', () => {
     expect(tokenRetryDelay(1)).toBe(30_000)
     expect(tokenRetryDelay(10)).toBe(300_000)
   })
+})
+
+describe('isUserInitiatedSeek', () => {
+  const now = 10_000
+  it('không có input → không phải người dùng tua', () => expect(isUserInitiatedSeek(null, now, false)).toBe(false))
+  it('input 200ms trước → người dùng tua', () => expect(isUserInitiatedSeek(now - 200, now, false)).toBe(true))
+  it('input 2000ms trước → VHS tự tua', () => expect(isUserInitiatedSeek(now - 2000, now, false)).toBe(false))
+  it('đang suppress (lệnh từ xa) → false', () => expect(isUserInitiatedSeek(now - 200, now, true)).toBe(false))
 })
