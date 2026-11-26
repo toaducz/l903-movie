@@ -115,3 +115,9 @@ export function createEchoGuard(): EchoGuard {
     }
   }
 }
+
+// VHS tự setCurrentTime (skip gap, sửa stall/underflow) cũng bắn 'seeking' → chỉ coi là người dùng tua khi vừa có input
+export const USER_SEEK_WINDOW_MS = 1500
+
+export const isUserInitiatedSeek = (lastInputAt: number | null, now: number, suppressed: boolean): boolean =>
+  !suppressed && lastInputAt !== null && now - lastInputAt <= USER_SEEK_WINDOW_MS

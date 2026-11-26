@@ -7,6 +7,7 @@ import {
   createEchoGuard,
   isNewer,
   isPlausibleSentAt,
+  isUserInitiatedSeek,
   nextSentAt,
   shouldApplyQueued,
   shouldSeek,
@@ -63,6 +64,8 @@ export function usePlayerSync(opts: Options) {
     if (!player) return
     const guard = guardRef.current
     let seekTimer: ReturnType<typeof setTimeout> | undefined
+    let lastInputAt: number | null = null
+    const el = player.el()
 
     const emit = (type: ControlType) => {
       const msg = build(player, type)
@@ -79,7 +82,11 @@ export function usePlayerSync(opts: Options) {
     }
     // 'seeking' bắn ngay khi currentTime đổi → so với cờ suppress đáng tin hơn 'seeked' (có thể trễ do tải)
     const onSeeking = () => {
-      if (!guard.isSuppressed('seek')) userSeekRef.current = true
+      if (isUserInitiatedSeek(lastInputAt, Date.now(), guard.isSuppressed('seek'))) userSeekRef.current = true
+    }
+    // Capture: chạy trước handler của video.js / custom-player (hotkey gắn ở window nên nghe ở document)
+    const onInput = () => {
+      lastInputAt = Date.now()
     }
     const onSeeked = () => {
       clearTimeout(seekTimer)
@@ -94,8 +101,14 @@ export function usePlayerSync(opts: Options) {
     player.on('pause', onPause)
     player.on('seeking', onSeeking)
     player.on('seeked', onSeeked)
+    el.addEventListener('pointerdown', onInput, true)
+    el.addEventListener('touchstart', onInput, { capture: true, passive: true })
+    document.addEventListener('keydown', onInput, true)
     return () => {
       clearTimeout(seekTimer)
+      el.removeEventListener('pointerdown', onInput, true)
+      el.removeEventListener('touchstart', onInput, true)
+      document.removeEventListener('keydown', onInput, true)
       if (player.isDisposed()) return
       player.off('play', onPlay)
       player.off('pause', onPause)
