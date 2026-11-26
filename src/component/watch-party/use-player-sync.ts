@@ -15,6 +15,7 @@ import {
   type ControlMessage,
   type ControlType
 } from '@/lib/watch-room/sync'
+import { isTypingTarget } from '@/lib/watch-room/fs-chat-keys'
 import type { RoomEpisode, RoomMovie } from '@/types/watch-room'
 
 // Gắn đồng bộ vào video.js: phát lệnh khi NGƯỜI DÙNG play / pause / tua, áp lệnh từ xa mà không phát ngược lại (echo guard)
@@ -88,6 +89,10 @@ export function usePlayerSync(opts: Options) {
     const onInput = () => {
       lastInputAt = Date.now()
     }
+    // Đang gõ chat thì phím không phải thao tác tua
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (!isTypingTarget(e.target)) onInput()
+    }
     const onSeeked = () => {
       clearTimeout(seekTimer)
       seekTimer = setTimeout(() => {
@@ -103,12 +108,12 @@ export function usePlayerSync(opts: Options) {
     player.on('seeked', onSeeked)
     el.addEventListener('pointerdown', onInput, true)
     el.addEventListener('touchstart', onInput, { capture: true, passive: true })
-    document.addEventListener('keydown', onInput, true)
+    document.addEventListener('keydown', onKeyDown, true)
     return () => {
       clearTimeout(seekTimer)
       el.removeEventListener('pointerdown', onInput, true)
       el.removeEventListener('touchstart', onInput, true)
-      document.removeEventListener('keydown', onInput, true)
+      document.removeEventListener('keydown', onKeyDown, true)
       if (player.isDisposed()) return
       player.off('play', onPlay)
       player.off('pause', onPause)
