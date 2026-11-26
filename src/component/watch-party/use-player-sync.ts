@@ -117,11 +117,11 @@ export function usePlayerSync(opts: Options) {
     }
   }, [player, build])
 
-  const applyNow = useCallback((p: Player, m: ControlMessage) => {
+  const applyNow = useCallback((p: Player, m: ControlMessage, tolerance?: number) => {
     const guard = guardRef.current
     const duration = p.duration()
     const target = targetPosition(m, optsRef.current.serverNow(), Number.isFinite(duration) ? (duration ?? null) : null)
-    if (shouldSeek(p.currentTime() ?? 0, target)) {
+    if (shouldSeek(p.currentTime() ?? 0, target, tolerance)) {
       userSeekRef.current = false // lệnh từ xa thắng thao tác tua đang chờ gửi
       guard.suppress('seek')
       p.currentTime(target)
@@ -146,17 +146,17 @@ export function usePlayerSync(opts: Options) {
 
   /** Áp vị trí + play/pause (không kiểm LWW); player chưa có metadata thì đợi loadedmetadata */
   const applyPosition = useCallback(
-    (m: ControlMessage, player?: Player | null) => {
+    (m: ControlMessage, player?: Player | null, { tolerance }: { tolerance?: number } = {}) => {
       const p = player ?? optsRef.current.player
       if (!p || p.isDisposed()) return
       // Chỉ giữ 1 lệnh chờ loadedmetadata; lúc áp kiểm lại xem còn là lệnh mới nhất không
       const queued = queuedRef.current
       if (queued && !queued.player.isDisposed()) queued.player.off('loadedmetadata', queued.handler)
       queuedRef.current = null
-      if (p.readyState() >= 1) return applyNow(p, m)
+      if (p.readyState() >= 1) return applyNow(p, m, tolerance)
       const handler = () => {
         queuedRef.current = null
-        if (!p.isDisposed() && shouldApplyQueued(m, lastRef.current)) applyNow(p, m)
+        if (!p.isDisposed() && shouldApplyQueued(m, lastRef.current)) applyNow(p, m, tolerance)
       }
       queuedRef.current = { player: p, handler }
       p.one('loadedmetadata', handler)

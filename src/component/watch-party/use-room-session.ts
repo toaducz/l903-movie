@@ -8,7 +8,7 @@ import { beaconRoomState, logRoomEvent, saveRoomState, type RoomDetail } from '@
 import { formatPosition } from '@/lib/watch-room/chat-format'
 import { createEventThrottle } from '@/lib/watch-room/event-throttle'
 import { findEpisode, roomEpisodeOf, sameEpisode, sameMovie } from '@/lib/watch-room/room-media'
-import type { ControlMessage, ControlType } from '@/lib/watch-room/sync'
+import { RESYNC_TOLERANCE_SEC, type ControlMessage, type ControlType } from '@/lib/watch-room/sync'
 import type { LoggableRoomEventType, RoomEpisode, RoomMessage, RoomMovie } from '@/types/watch-room'
 import { useServerClock } from './use-server-clock'
 import { usePlayerSync } from './use-player-sync'
@@ -136,7 +136,7 @@ export function useRoomSession(room: RoomDetail, me: RoomMe, onMessage: (m: Room
         setPlayback({ movie: m.movie ?? cur.movie, episode: m.episode })
       } else {
         pendingRef.current = null
-        applyPosition(m)
+        applyPosition(m, null, { tolerance: kind === 'reply' ? RESYNC_TOLERANCE_SEC : undefined })
       }
 
       if (!fresh) return

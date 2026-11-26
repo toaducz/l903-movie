@@ -26,8 +26,12 @@ export function targetPosition(msg: ControlMessage, serverNow: number, duration:
   return duration !== null && Number.isFinite(duration) && duration > 0 ? Math.min(raw, duration) : raw
 }
 
+// state_reply chỉ để chỉnh lệch khi nối lại / tab hiện lại → ngưỡng rộng, tránh giật vì lệch vài trăm ms
+export const RESYNC_TOLERANCE_SEC = 2
+
 /** Lệch nhỏ thì thôi, tránh giật */
-export const shouldSeek = (current: number, target: number): boolean => Math.abs(current - target) >= SEEK_TOLERANCE_SEC
+export const shouldSeek = (current: number, target: number, tolerance = SEEK_TOLERANCE_SEC): boolean =>
+  Math.abs(current - target) >= tolerance
 
 /** Last-write-wins: sentAt lớn hơn thắng; trùng ms thì so `by` để mọi máy chọn cùng một lệnh */
 export function isNewer(
