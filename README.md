@@ -2,10 +2,6 @@
 
 **L903-Movie**
 
-![demo_1](./src/assets/demo1.png) <!-- [image] -->
-
-![demo_2](./src/assets/demo2.png) <!-- [image] -->
-
 Dự án xem phim sử dụng [Next.js](https://nextjs.org) được khởi tạo bằng [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
 ## Hướng dẫn sử dụng
