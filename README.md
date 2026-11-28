@@ -1,4 +1,4 @@
-# 📚 L903 Movie
+# L903 Movie
 
 **L903-Movie**
 
